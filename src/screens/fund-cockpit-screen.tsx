@@ -135,8 +135,8 @@ export function FundCockpitScreen() {
   }, []);
 
   const maxTotal = Math.max(...fundStack.map((x) => Math.max(x.sourceTotal, Math.abs(x.appTotal))));
-  const isBalanced = fundStack.every((x) => Math.abs(x.balanceDiff) <= 0.01);
   const latestFund = fundStack[fundStack.length - 1];
+  const [hoveredFundMonth, setHoveredFundMonth] = useState<(typeof fundStack)[number] | null>(null);
   const sourceDetails = [
     { label: "吸收存款", value: latestFund.deposit, color: "text-emerald-700" },
     { label: "权益资金", value: latestFund.equity, color: "text-amber-700" }
@@ -412,9 +412,6 @@ export function FundCockpitScreen() {
             <div className="rounded-xl border border-slate-200 p-3">
               <div className="mb-2 flex items-center justify-between text-[11px]">
                 <p className="font-medium text-slate-700">主题河流图（资金来源与应用趋势）</p>
-                <p className={isBalanced ? "text-emerald-600" : "text-red-600"}>
-                  {isBalanced ? "校验结果：来源与应用逐期平衡" : "校验结果：存在不平衡期次"}
-                </p>
               </div>
               <svg viewBox={`0 0 ${chartWidth + 60} ${chartHeight + 60}`} className="h-64 w-full">
                 <g transform="translate(30,15)">
@@ -473,7 +470,6 @@ export function FundCockpitScreen() {
                     )}
                   />
 
-                  <line x1={0} x2={chartWidth} y1={centerY} y2={centerY} stroke="#111827" strokeWidth="2.2" />
                   <polyline fill="none" stroke="#166534" strokeWidth="2.4" points={buildPolylinePoints(fundStack.map((x) => x.sourceTotal), chartWidth, yPosition)} />
                   <polyline fill="none" stroke="#1d4ed8" strokeWidth="2.4" points={buildPolylinePoints(fundStack.map((x) => x.appTotal), chartWidth, yPosition)} />
 
@@ -482,8 +478,39 @@ export function FundCockpitScreen() {
                       {item.month}
                     </text>
                   ))}
+
+                  {fundStack.map((item, idx) => {
+                    const segmentWidth = chartWidth / Math.max(fundStack.length - 1, 1);
+                    const x = (idx / Math.max(fundStack.length - 1, 1)) * chartWidth;
+                    return (
+                      <rect
+                        key={`${item.month}-hover`}
+                        x={Math.max(0, x - segmentWidth / 2)}
+                        y={0}
+                        width={segmentWidth}
+                        height={chartHeight}
+                        fill="transparent"
+                        onMouseEnter={() => setHoveredFundMonth(item)}
+                        onMouseLeave={() => setHoveredFundMonth(null)}
+                      />
+                    );
+                  })}
                 </g>
               </svg>
+
+              {hoveredFundMonth ? (
+                <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-700">
+                  <p className="mb-1 font-semibold text-slate-800">{hoveredFundMonth.month}</p>
+                  <div className="grid gap-x-3 gap-y-1 sm:grid-cols-2">
+                    <span>吸收存款：{hoveredFundMonth.deposit} 亿元</span>
+                    <span>权益资金：{hoveredFundMonth.equity} 亿元</span>
+                    <span>资金备付：{Math.abs(hoveredFundMonth.reserve)} 亿元</span>
+                    <span>信贷业务：{Math.abs(hoveredFundMonth.credit)} 亿元</span>
+                    <span>同业业务：{Math.abs(hoveredFundMonth.interbank)} 亿元</span>
+                    <span>投资业务：{Math.abs(hoveredFundMonth.invest)} 亿元</span>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] text-slate-600">
                 <span className="text-green-700">■ 吸收存款</span>
@@ -492,7 +519,6 @@ export function FundCockpitScreen() {
                 <span className="text-blue-700">■ 信贷业务</span>
                 <span className="text-sky-700">■ 同业业务</span>
                 <span className="text-slate-700">■ 投资业务</span>
-                <span className="text-slate-900">━ 资金平衡线（Y=0）</span>
               </div>
             </div>
           </div>
