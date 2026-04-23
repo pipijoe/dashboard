@@ -137,6 +137,16 @@ export function FundCockpitScreen() {
   const maxTotal = Math.max(...fundStack.map((x) => Math.max(x.sourceTotal, Math.abs(x.appTotal))));
   const isBalanced = fundStack.every((x) => Math.abs(x.balanceDiff) <= 0.01);
   const latestFund = fundStack[fundStack.length - 1];
+  const sourceDetails = [
+    { label: "吸收存款", value: latestFund.deposit, color: "text-emerald-700" },
+    { label: "权益资金", value: latestFund.equity, color: "text-amber-700" }
+  ] as const;
+  const appDetails = [
+    { label: "资金备付", value: Math.abs(latestFund.reserve), color: "text-cyan-700" },
+    { label: "信贷业务", value: Math.abs(latestFund.credit), color: "text-blue-700" },
+    { label: "同业业务", value: Math.abs(latestFund.interbank), color: "text-sky-700" },
+    { label: "投资业务", value: Math.abs(latestFund.invest), color: "text-slate-700" }
+  ] as const;
   const chartWidth = 760;
   const chartHeight = 280;
   const centerY = chartHeight / 2;
@@ -370,29 +380,42 @@ export function FundCockpitScreen() {
             <button className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-100">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-12">
-            <div className="space-y-2 lg:col-span-4">
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5">
-                <p className="text-[11px] text-slate-600">资金来源总和（第一层）</p>
-                <p className="text-xl font-bold text-emerald-700">{latestFund.sourceTotal} 亿元</p>
-                <p className="text-[11px] text-emerald-700">吸收存款 {latestFund.deposit} + 权益 {latestFund.equity} = {latestFund.sourceTotal}</p>
+          <div className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                <p className="text-xs text-slate-600">资金来源</p>
+                <p className="mt-1 text-4xl font-bold text-emerald-700">{latestFund.sourceTotal}<span className="ml-1 text-base font-semibold">亿元</span></p>
+                <div className="mt-3 space-y-1.5">
+                  {sourceDetails.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between rounded-lg border border-emerald-100 bg-white/80 px-2.5 py-1.5 text-[11px]">
+                      <span className="text-slate-600">{item.label}</span>
+                      <span className={`font-semibold ${item.color}`}>{item.value} 亿元</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="rounded-xl border border-sky-200 bg-sky-50 p-2.5">
-                <p className="text-[11px] text-slate-600">资金应用总和（第二层）</p>
-                <p className="text-xl font-bold text-sky-700">{Math.abs(latestFund.appTotal)} 亿元</p>
-                <p className="text-[11px] text-sky-700">
-                  备付 {Math.abs(latestFund.reserve)} / 信贷 {Math.abs(latestFund.credit)} / 同业 {Math.abs(latestFund.interbank)} / 投资 {Math.abs(latestFund.invest)}
-                </p>
-              </div>
-
-              <div className={`rounded-xl border p-2.5 ${isBalanced ? "border-slate-200 bg-slate-50 text-slate-700" : "border-red-200 bg-red-50 text-red-700"}`}>
-                <p className="text-[11px]">平衡校验（逐期）</p>
-                <p className="text-[11px]">{isBalanced ? "资金来源总和 与 资金应用总和(绝对值) 全部匹配" : "存在不平衡期次，请检查数据"}</p>
+              <div className="rounded-xl border border-sky-200 bg-sky-50 p-3">
+                <p className="text-xs text-slate-600">资金应用</p>
+                <p className="mt-1 text-4xl font-bold text-sky-700">{Math.abs(latestFund.appTotal)}<span className="ml-1 text-base font-semibold">亿元</span></p>
+                <div className="mt-3 space-y-1.5">
+                  {appDetails.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between rounded-lg border border-sky-100 bg-white/80 px-2.5 py-1.5 text-[11px]">
+                      <span className="text-slate-600">{item.label}</span>
+                      <span className={`font-semibold ${item.color}`}>{item.value} 亿元</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 p-3 lg:col-span-8">
+            <div className="rounded-xl border border-slate-200 p-3">
+              <div className="mb-2 flex items-center justify-between text-[11px]">
+                <p className="font-medium text-slate-700">主题河流图（资金来源与应用趋势）</p>
+                <p className={isBalanced ? "text-emerald-600" : "text-red-600"}>
+                  {isBalanced ? "校验结果：来源与应用逐期平衡" : "校验结果：存在不平衡期次"}
+                </p>
+              </div>
               <svg viewBox={`0 0 ${chartWidth + 60} ${chartHeight + 60}`} className="h-64 w-full">
                 <g transform="translate(30,15)">
                   <path
