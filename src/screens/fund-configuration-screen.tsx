@@ -1,4 +1,4 @@
-import { ArrowDownUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowDownUp, ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -91,6 +91,19 @@ const interbankAssetRows = [
   }
 ];
 
+const financingChannelRows = [
+  { channel: "政策性银行同业拆借", institution: "国家开发银行", amountWan: 12000, termDays: 30, rate: 1.72 },
+  { channel: "股份行同业存单", institution: "华东银行", amountWan: 15000, termDays: 90, rate: 1.95 },
+  { channel: "城商行同业借款", institution: "城市商业银行A", amountWan: 8000, termDays: 14, rate: 1.88 },
+  { channel: "债券质押式回购", institution: "中央结算交易商", amountWan: 10000, termDays: 7, rate: 1.66 }
+];
+
+const financingPlanRows = [
+  { name: "方案A-短期滚动", scaleWan: 12000, term: "7天×4期", annualCostRate: 1.68 },
+  { name: "方案B-中期锁价", scaleWan: 12000, term: "3个月", annualCostRate: 1.86 },
+  { name: "方案C-组合融资", scaleWan: 12000, term: "7天+1个月+2个月", annualCostRate: 1.74 }
+];
+
 const calculatorAsOfDate = "2026-04-23";
 
 function toDate(date: string) {
@@ -111,6 +124,10 @@ function formatWan(value: number) {
   })} 万元`;
 }
 
+function formatRate(value: number) {
+  return `${value.toFixed(2)}%`;
+}
+
 function SortHeader({ label }: { label: string }) {
   return (
     <button className="inline-flex items-center gap-1 rounded-sm px-1 py-0.5 text-left transition-colors hover:bg-muted/70 hover:text-foreground">
@@ -127,98 +144,187 @@ export function FundConfigurationScreen() {
     return total + (row.principalWan * row.rate * remainingDays) / 365;
   }, 0);
   const annualIncomeEstimateWan = realizedIncomeWan + predictedFutureIncomeWan;
+  const channelCostRows = financingChannelRows.map((row) => ({
+    ...row,
+    costWan: (row.amountWan * (row.rate / 100) * row.termDays) / 365
+  }));
+  const minChannelRate = Math.min(...channelCostRows.map((row) => row.rate));
+  const minPlanCostRate = Math.min(...financingPlanRows.map((row) => row.annualCostRate));
+  const maxPlanCostRate = Math.max(...financingPlanRows.map((row) => row.annualCostRate));
+  const costRange = Math.max(maxPlanCostRate - minPlanCostRate, 0.01);
 
   return (
     <section>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>交易信息</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <label className="space-y-1 text-sm text-muted-foreground">
-                交易对手筛选
-                <select className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground outline-none ring-primary/30 focus:ring-2">
-                  <option>全部</option>
-                  <option>华东银行</option>
-                  <option>城市商业银行A</option>
-                  <option>省联社</option>
-                  <option>沿海银行</option>
-                  <option>农业发展银行</option>
-                </select>
-              </label>
-              <label className="space-y-1 text-sm text-muted-foreground">
-                业务品种筛选
-                <select className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground outline-none ring-primary/30 focus:ring-2">
-                  <option>全部</option>
-                  <option>同业活期</option>
-                  <option>同业定期</option>
-                  <option>同业存单</option>
-                  <option>拆借</option>
-                  <option>债券质押式回购</option>
-                  <option>票据交易</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="overflow-auto rounded-md border border-border">
-              <table className="min-w-[900px] text-sm">
-                <thead className="bg-muted/60 text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium">
-                      <SortHeader label="交易日期" />
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium">交易对手</th>
-                    <th className="px-3 py-2 text-left font-medium">业务类型</th>
-                    <th className="px-3 py-2 text-left font-medium">
-                      <SortHeader label="金额" />
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium">
-                      <SortHeader label="利率" />
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium">
-                      <SortHeader label="期限" />
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium">起息日</th>
-                    <th className="px-3 py-2 text-left font-medium">到期日</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactionRows.map((row) => (
-                    <tr key={`${row.date}-${row.counterparty}-${row.product}`} className="border-t border-border">
-                      <td className="px-3 py-2">{row.date}</td>
-                      <td className="px-3 py-2">{row.counterparty}</td>
-                      <td className="px-3 py-2">{row.product}</td>
-                      <td className="px-3 py-2">{row.amount}</td>
-                      <td className="px-3 py-2">{row.rate}</td>
-                      <td className="px-3 py-2">{row.term}</td>
-                      <td className="px-3 py-2">{row.valueDate}</td>
-                      <td className="px-3 py-2">{row.maturityDate}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-muted-foreground">共 25 条记录，当前第 1 / 5 页</p>
-              <div className="flex items-center gap-2">
-                <button className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary hover:text-primary">
-                  <ChevronLeft className="h-4 w-4" />
-                  上一页
-                </button>
-                <button className="rounded-md border border-primary bg-primary px-3 py-1.5 text-sm text-primary-foreground">1</button>
-                <button className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary hover:text-primary">2</button>
-                <button className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary hover:text-primary">3</button>
-                <button className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary hover:text-primary">
-                  下一页
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+              <CardTitle>交易信息</CardTitle>
+              <button className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary hover:text-primary">
+                <Download className="h-4 w-4" />
+                下载
+              </button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label className="space-y-1 text-sm text-muted-foreground">
+                  交易对手筛选
+                  <select className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground outline-none ring-primary/30 focus:ring-2">
+                    <option>全部</option>
+                    <option>华东银行</option>
+                    <option>城市商业银行A</option>
+                    <option>省联社</option>
+                    <option>沿海银行</option>
+                    <option>农业发展银行</option>
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm text-muted-foreground">
+                  业务品种筛选
+                  <select className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground outline-none ring-primary/30 focus:ring-2">
+                    <option>全部</option>
+                    <option>同业活期</option>
+                    <option>同业定期</option>
+                    <option>同业存单</option>
+                    <option>拆借</option>
+                    <option>债券质押式回购</option>
+                    <option>票据交易</option>
+                  </select>
+                </label>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              <div className="overflow-auto rounded-md border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/60 text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">
+                        <SortHeader label="交易日期" />
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium">交易对手</th>
+                      <th className="px-3 py-2 text-left font-medium">业务类型</th>
+                      <th className="px-3 py-2 text-left font-medium">
+                        <SortHeader label="金额" />
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium">
+                        <SortHeader label="利率" />
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium">
+                        <SortHeader label="期限" />
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium">起息日</th>
+                      <th className="px-3 py-2 text-left font-medium">到期日</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactionRows.map((row) => (
+                      <tr key={`${row.date}-${row.counterparty}-${row.product}`} className="border-t border-border">
+                        <td className="px-3 py-2">{row.date}</td>
+                        <td className="px-3 py-2">{row.counterparty}</td>
+                        <td className="px-3 py-2">{row.product}</td>
+                        <td className="px-3 py-2">{row.amount}</td>
+                        <td className="px-3 py-2">{row.rate}</td>
+                        <td className="px-3 py-2">{row.term}</td>
+                        <td className="px-3 py-2">{row.valueDate}</td>
+                        <td className="px-3 py-2">{row.maturityDate}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">共 25 条记录，当前第 1 / 5 页</p>
+                <div className="flex items-center gap-2">
+                  <button className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary hover:text-primary">
+                    <ChevronLeft className="h-4 w-4" />
+                    上一页
+                  </button>
+                  <button className="rounded-md border border-primary bg-primary px-3 py-1.5 text-sm text-primary-foreground">1</button>
+                  <button className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary hover:text-primary">2</button>
+                  <button className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary hover:text-primary">3</button>
+                  <button className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary hover:text-primary">
+                    下一页
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>融资方案</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="channel-analysis" className="w-full">
+                <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-muted/60 p-1">
+                  <TabsTrigger value="channel-analysis">融资渠道分析</TabsTrigger>
+                  <TabsTrigger value="plan-comparison">融资成本对比</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="channel-analysis" className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    通过报价系统取值对比各金融机构同业利率，自动计算渠道成本并将最低利率项标红高亮展示。
+                  </p>
+                  <div className="overflow-auto rounded-md border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/60 text-muted-foreground">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium">融资渠道</th>
+                          <th className="px-3 py-2 text-left font-medium">金融机构</th>
+                          <th className="px-3 py-2 text-left font-medium">融资规模</th>
+                          <th className="px-3 py-2 text-left font-medium">期限</th>
+                          <th className="px-3 py-2 text-left font-medium">同业利率</th>
+                          <th className="px-3 py-2 text-left font-medium">成本测算</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {channelCostRows.map((row) => {
+                          const isBestRate = row.rate === minChannelRate;
+                          return (
+                            <tr key={`${row.channel}-${row.institution}`} className="border-t border-border">
+                              <td className="px-3 py-2">{row.channel}</td>
+                              <td className="px-3 py-2">{row.institution}</td>
+                              <td className="px-3 py-2">{formatWan(row.amountWan)}</td>
+                              <td className="px-3 py-2">{row.termDays} 天</td>
+                              <td className={`px-3 py-2 font-medium ${isBestRate ? "text-red-600" : ""}`}>{formatRate(row.rate)}</td>
+                              <td className={`px-3 py-2 font-medium ${isBestRate ? "text-red-600" : ""}`}>{formatWan(row.costWan)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="plan-comparison" className="space-y-3">
+                  <p className="text-xs text-muted-foreground">从规模、期限、成本三个维度对融资方案进行比选，辅助选择最优融资路径。</p>
+                  <div className="space-y-2 rounded-md border border-border p-3">
+                    {financingPlanRows.map((plan) => {
+                      const widthPercent = ((plan.annualCostRate - minPlanCostRate) / costRange) * 60 + 40;
+                      const isBestPlan = plan.annualCostRate === minPlanCostRate;
+                      return (
+                        <div key={plan.name} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>
+                              {plan.name}｜规模 {formatWan(plan.scaleWan)}｜期限 {plan.term}
+                            </span>
+                            <span className={isBestPlan ? "font-semibold text-primary" : ""}>{formatRate(plan.annualCostRate)}</span>
+                          </div>
+                          <div className="h-2.5 rounded-full bg-muted">
+                            <div
+                              className={`h-full rounded-full ${isBestPlan ? "bg-primary" : "bg-slate-400"}`}
+                              style={{ width: `${Math.min(widthPercent, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>
@@ -256,7 +362,7 @@ export function FundConfigurationScreen() {
                 </p>
 
                 <div className="overflow-auto rounded-md border border-border">
-                  <table className="min-w-[900px] text-sm">
+                  <table className="w-full text-sm">
                     <thead className="bg-muted/60 text-muted-foreground">
                       <tr>
                         <th className="px-3 py-2 text-left font-medium">资产类型</th>
