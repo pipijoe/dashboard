@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 
 import {
   Activity,
@@ -101,7 +101,7 @@ export function FundCockpitScreen() {
   }, []);
 
   const latestFund = fundStack[fundStack.length - 1];
-  const themeRiverRef = useRef<HTMLDivElement | null>(null);
+  const [highlightedRiver, setHighlightedRiver] = useState<string | null>(null);
   const sourceDetails = [
     { label: "吸收存款", value: latestFund.deposit, color: "text-emerald-700" },
     { label: "权益资金", value: latestFund.equity, color: "text-amber-700" }
@@ -113,75 +113,57 @@ export function FundCockpitScreen() {
     { label: "投资业务", value: latestFund.invest, color: "text-slate-700" }
   ] as const;
 
-  useEffect(() => {
-    let disposed = false;
-    let chart: { setOption: (option: unknown) => void; resize: () => void; dispose: () => void } | null = null;
+  const riverSeries = useMemo(
+    () =>
+      [
+        { key: "deposit", label: "吸收存款", color: "#16a34a" },
+        { key: "equity", label: "权益资金", color: "#d97706" },
+        { key: "reserve", label: "资金备付", color: "#0891b2" },
+        { key: "credit", label: "信贷业务", color: "#2563eb" },
+        { key: "interbank", label: "同业业务", color: "#0284c7" },
+        { key: "invest", label: "投资业务", color: "#475569" }
+      ] as const,
+    []
+  );
 
-    const loadThemeRiver = async () => {
-      if (!themeRiverRef.current) return () => undefined;
+  const riverLayout = useMemo(() => {
+    const width = 880;
+    const height = 240;
+    const padX = 34;
+    const padY = 16;
+    const drawableWidth = width - padX * 2;
+    const drawableHeight = height - padY * 2;
+    const xStep = drawableWidth / (fundSeries.length - 1);
+    const monthTotals = fundSeries.map((item) => riverSeries.reduce((acc, series) => acc + item[series.key], 0));
+    const maxTotal = Math.max(...monthTotals);
+    const scaleY = drawableHeight / maxTotal;
+    const centerY = height / 2;
 
-      if (!(window as Window & { echarts?: unknown }).echarts) {
-        const script = document.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js";
-        script.async = true;
-        document.body.appendChild(script);
-        await new Promise<void>((resolve, reject) => {
-          script.onload = () => resolve();
-          script.onerror = () => reject(new Error("ECharts 加载失败"));
-        });
-      }
+    const layers = riverSeries.map((series) => {
+      const topPoints: string[] = [];
+      const bottomPoints: string[] = [];
 
-      if (disposed || !themeRiverRef.current) return () => undefined;
-
-      const echarts = (window as unknown as Window & {
-        echarts: { init: (el: HTMLDivElement) => { setOption: (option: unknown) => void; resize: () => void; dispose: () => void } };
-      }).echarts;
-      chart = echarts.init(themeRiverRef.current);
-
-      const riverData = fundSeries.flatMap((item) => [
-        [item.month, item.deposit, "吸收存款"],
-        [item.month, item.equity, "权益资金"],
-        [item.month, item.reserve, "资金备付"],
-        [item.month, item.credit, "信贷业务"],
-        [item.month, item.interbank, "同业业务"],
-        [item.month, item.invest, "投资业务"]
-      ]);
-
-      chart.setOption({
-        color: ["#16a34a", "#d97706", "#0891b2", "#2563eb", "#0284c7", "#475569"],
-        tooltip: { trigger: "axis", axisPointer: { type: "line" } },
-        legend: { top: 0, textStyle: { color: "#475569", fontSize: 11 } },
-        singleAxis: {
-          top: 36,
-          bottom: 24,
-          type: "category",
-          data: fundSeries.map((item) => item.month),
-          axisLine: { lineStyle: { color: "#cbd5e1" } },
-          axisLabel: { color: "#64748b" }
-        },
-        series: [
-          {
-            type: "themeRiver",
-            emphasis: { itemStyle: { shadowBlur: 16, shadowColor: "rgba(15,23,42,0.25)" }, label: { show: false } },
-            label: { show: false },
-            data: riverData
-          }
-        ]
+      fundSeries.forEach((item, index) => {
+        const x = padX + index * xStep;
+        const totalHeight = monthTotals[index] * scaleY;
+        const baseline = centerY - totalHeight / 2;
+        const previousValue = riverSeries
+          .slice(0, riverSeries.findIndex((entry) => entry.key === series.key))
+          .reduce((sum, entry) => sum + item[entry.key], 0);
+        const currentTop = baseline + previousValue * scaleY;
+        const currentBottom = currentTop + item[series.key] * scaleY;
+        topPoints.push(`${x},${currentTop}`);
+        bottomPoints.push(`${x},${currentBottom}`);
       });
 
-      const onResize = () => chart?.resize();
-      window.addEventListener("resize", onResize);
-      return () => window.removeEventListener("resize", onResize);
-    };
+      return {
+        ...series,
+        path: `M ${topPoints.join(" L ")} L ${bottomPoints.reverse().join(" L ")} Z`
+      };
+    });
 
-    const cleanupPromise = loadThemeRiver();
-
-    return () => {
-      disposed = true;
-      cleanupPromise.then((cleanup) => cleanup()).catch(() => undefined);
-      chart?.dispose();
-    };
-  }, []);
+    return { width, height, padX, layers };
+  }, [riverSeries]);
 
   return (
     <section className="grid grid-cols-12 gap-5 text-xs">
@@ -444,7 +426,43 @@ export function FundCockpitScreen() {
               <div className="mb-2 flex items-center justify-between text-[11px]">
                 <p className="font-medium text-slate-700">主题河流图（资金来源与应用趋势）</p>
               </div>
-              <div ref={themeRiverRef} className="h-64 w-full" />
+              <div className="mb-2 flex flex-wrap gap-2">
+                {riverLayout.layers.map((series) => (
+                  <button
+                    key={series.label}
+                    onMouseEnter={() => setHighlightedRiver(series.label)}
+                    onMouseLeave={() => setHighlightedRiver(null)}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600"
+                  >
+                    <i className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: series.color }} />
+                    {series.label}
+                  </button>
+                ))}
+              </div>
+              <svg viewBox={`0 0 ${riverLayout.width} ${riverLayout.height}`} className="h-64 w-full">
+                {riverLayout.layers.map((series) => {
+                  const dimmed = highlightedRiver !== null && highlightedRiver !== series.label;
+                  return (
+                    <path
+                      key={series.label}
+                      d={series.path}
+                      fill={series.color}
+                      opacity={dimmed ? 0.25 : 0.88}
+                      className="transition-opacity duration-200"
+                      onMouseEnter={() => setHighlightedRiver(series.label)}
+                      onMouseLeave={() => setHighlightedRiver(null)}
+                    />
+                  );
+                })}
+                {fundSeries.map((item, index) => {
+                  const x = riverLayout.padX + index * ((riverLayout.width - riverLayout.padX * 2) / (fundSeries.length - 1));
+                  return (
+                    <text key={item.month} x={x} y={riverLayout.height - 4} textAnchor="middle" className="fill-slate-500 text-[10px]">
+                      {item.month}
+                    </text>
+                  );
+                })}
+              </svg>
             </div>
           </div>
         </CardContent>
