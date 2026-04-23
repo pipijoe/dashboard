@@ -288,7 +288,7 @@ export function FundCockpitScreen() {
               <TabsTrigger value="structure" className="flex-1">同业结构</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="term" className="min-h-[292px]">
+            <TabsContent value="term" className="h-[292px]">
               <div className="mb-2 grid grid-cols-2 gap-2">
                 <div className="rounded-xl border border-orange-100 bg-orange-50 p-2.5">
                   <p className="text-xs text-slate-600">资产总额</p>
@@ -340,7 +340,7 @@ export function FundCockpitScreen() {
               </div>
             </TabsContent>
 
-            <TabsContent value="structure" className="min-h-[292px]">
+            <TabsContent value="structure" className="h-[292px]">
               <div className="mb-3 flex items-center justify-between rounded-xl border border-violet-100 bg-violet-50 p-3">
                 <div>
                   <p className="text-xs text-slate-600">资产总额</p>
