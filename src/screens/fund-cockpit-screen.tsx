@@ -85,7 +85,6 @@ function CardHead({ icon: Icon, title, subtitle }: { icon: ComponentType<{ class
 export function FundCockpitScreen() {
   const [selectedType, setSelectedType] = useState<(typeof quoteTypeFilters)[number]>("定期");
   const [selectedTerm, setSelectedTerm] = useState<QuoteTerm>("1年");
-  const [positionCompareMode, setPositionCompareMode] = useState<"mom" | "yoy">("mom");
   const availableQuoteTerms = quoteTermFiltersByType[selectedType];
 
   useEffect(() => {
@@ -288,25 +287,35 @@ export function FundCockpitScreen() {
               <TabsTrigger value="structure" className="flex-1">同业结构</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="term">
-              <div className="mb-3 grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-orange-100 bg-orange-50 p-3">
+            <TabsContent value="term" className="min-h-[292px]">
+              <div className="mb-2 grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-orange-100 bg-orange-50 p-2.5">
                   <p className="text-xs text-slate-600">资产总额</p>
-                  <p className="mt-1 text-4xl font-bold text-orange-600">417<span className="ml-1 text-base">亿</span></p>
+                  <p className="mt-1 text-3xl font-bold text-orange-600">417<span className="ml-1 text-sm">亿</span></p>
                 </div>
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-2.5">
                   <p className="text-xs text-slate-600">最长期限</p>
-                  <p className="mt-1 text-4xl font-bold text-emerald-600">1Y<span className="ml-1 text-lg">85亿</span></p>
+                  <p className="mt-1 text-3xl font-bold text-emerald-600">1Y<span className="ml-1 text-base">85亿</span></p>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 p-3">
-                <div className="flex h-52 items-end gap-2 border-b border-l border-dashed border-slate-300 px-2 pb-1 pt-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
+                <div className="mb-2 flex items-center justify-between text-[10px] text-slate-500">
+                  <span>期限分布（亿）</span>
+                  <span>总量：417亿</span>
+                </div>
+                <div className="flex h-40 items-end gap-1.5 rounded-lg border border-slate-200 bg-white px-2 pb-1.5 pt-3 shadow-[inset_0_-1px_0_#f1f5f9]">
                   {barData.map((v, idx) => (
-                    <div key={idx} className="flex-1 rounded-t-lg bg-gradient-to-t from-lime-400 via-emerald-400 to-emerald-600" style={{ height: `${v}%`, opacity: 0.6 + idx * 0.05 }} />
+                    <div key={idx} className="relative flex flex-1 items-end">
+                      <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] text-slate-400">{v}</span>
+                      <div
+                        className="w-full rounded-t-md bg-gradient-to-t from-emerald-300 via-cyan-400 to-blue-500 shadow-[0_2px_8px_rgba(14,116,144,0.25)]"
+                        style={{ height: `${v}%`, opacity: 0.65 + idx * 0.04 }}
+                      />
+                    </div>
                   ))}
                 </div>
-                <div className="mt-2 grid grid-cols-8 text-center text-[10px] text-slate-500">
+                <div className="mt-1.5 grid grid-cols-8 text-center text-[10px] text-slate-500">
                   {["1D", "7D", "1M", "2M", "3M", "6M", "9M", "1Y"].map((x) => (
                     <span key={x}>{x}</span>
                   ))}
@@ -314,8 +323,8 @@ export function FundCockpitScreen() {
               </div>
             </TabsContent>
 
-            <TabsContent value="structure">
-              <div className="mb-4 flex items-center justify-between rounded-xl border border-violet-100 bg-violet-50 p-3">
+            <TabsContent value="structure" className="min-h-[292px]">
+              <div className="mb-3 flex items-center justify-between rounded-xl border border-violet-100 bg-violet-50 p-3">
                 <div>
                   <p className="text-xs text-slate-600">资产总额</p>
                   <p className="mt-1 text-4xl font-bold text-violet-600">127.8<span className="ml-1 text-lg">亿</span></p>
@@ -325,7 +334,7 @@ export function FundCockpitScreen() {
                 </div>
               </div>
 
-              <div className="grid place-items-center py-2">
+              <div className="grid place-items-center py-1.5">
                 <div
                   className="h-36 w-36 rounded-full"
                   style={{
@@ -349,22 +358,8 @@ export function FundCockpitScreen() {
       <Card className="col-span-12 rounded-2xl bg-white/90 p-5 lg:col-span-4">
         <CardContent className="p-0">
           <CardHead icon={Wallet} title="头寸趋势分析" subtitle="Position Trend Analysis" />
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs text-slate-500">趋势折线图与数据明细表结合，支持同比/环比分析</p>
-            <div className="rounded-lg bg-slate-100 p-1 text-[11px]">
-              <button
-                onClick={() => setPositionCompareMode("mom")}
-                className={`rounded-md px-2 py-1 ${positionCompareMode === "mom" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}
-              >
-                环比
-              </button>
-              <button
-                onClick={() => setPositionCompareMode("yoy")}
-                className={`rounded-md px-2 py-1 ${positionCompareMode === "yoy" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}
-              >
-                同比
-              </button>
-            </div>
+          <div className="mb-3">
+            <p className="text-xs text-slate-500">趋势折线图与数据明细表结合，展示环比与同比变化</p>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -394,7 +389,7 @@ export function FundCockpitScreen() {
                 <tr>
                   <th className="px-3 py-2">月份</th>
                   <th className="px-3 py-2">头寸(亿)</th>
-                  <th className="px-3 py-2">{positionCompareMode === "mom" ? "环比" : "同比"}</th>
+                  <th className="px-3 py-2">环比</th>
                   <th className="px-3 py-2 text-right">同比</th>
                 </tr>
               </thead>
@@ -403,7 +398,7 @@ export function FundCockpitScreen() {
                   <tr key={row.month} className="border-t border-slate-100 text-slate-700">
                     <td className="px-3 py-2">{row.month}</td>
                     <td className="px-3 py-2">{row.value}</td>
-                    <td className="px-3 py-2 text-emerald-600">{positionCompareMode === "mom" ? row.mom : row.yoy}</td>
+                    <td className="px-3 py-2 text-emerald-600">{row.mom}</td>
                     <td className="px-3 py-2 text-right text-blue-600">{row.yoy}</td>
                   </tr>
                 ))}
