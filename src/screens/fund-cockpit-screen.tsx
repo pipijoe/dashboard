@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import { useMemo, useState, type ComponentType } from "react";
 
 import {
   Activity,
@@ -13,23 +13,27 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const liquidityRows = [
   { label: "流动性资产总计", value: "127.8", unit: "亿元", tone: "emerald", icon: Activity },
   { label: "流动性负债总计", value: "334.67", unit: "亿元", tone: "blue", icon: HandCoins },
   { label: "流动性比例", value: "37.74", unit: "%", tone: "green", icon: MoveUp },
   { label: "本月最低流动性比例", value: "35.14", unit: "%", tone: "amber", icon: CircleAlert }
-];
+] as const;
 
+const liquidityTrend = [35.6, 36.2, 35.8, 36.9, 37.2, 37.74];
+const liquidityTicks = ["11/01", "11/05", "11/10", "11/15", "11/20", "11/25"];
 const barData = [82, 15, 28, 12, 55, 67, 72, 85];
 
-const sourceCards = [
-  { label: "存款准备金", value: "132", unit: "亿元", tone: "blue", icon: Landmark },
-  { label: "备付资金", value: "95", unit: "亿元", tone: "green", icon: Wallet },
-  { label: "信贷", value: "182", unit: "亿元", tone: "amber", icon: Activity },
-  { label: "投资用款", value: "144", unit: "亿元", tone: "violet", icon: Activity },
-  { label: "吸收存款", value: "397", unit: "亿元", tone: "rose", icon: MoveUp, change: "同比 +5.48%" }
-];
+const fundSeries = [
+  { month: "6月", deposit: 398, equity: 168, reserve: 96, credit: 185, interbank: 118, invest: 167 },
+  { month: "7月", deposit: 405, equity: 171, reserve: 98, credit: 191, interbank: 121, invest: 166 },
+  { month: "8月", deposit: 412, equity: 173, reserve: 101, credit: 194, interbank: 124, invest: 166 },
+  { month: "9月", deposit: 416, equity: 177, reserve: 102, credit: 197, interbank: 126, invest: 168 },
+  { month: "10月", deposit: 423, equity: 181, reserve: 104, credit: 202, interbank: 129, invest: 169 },
+  { month: "11月", deposit: 431, equity: 184, reserve: 106, credit: 206, interbank: 132, invest: 171 }
+] as const;
 
 const quoteTicks = ["7/1", "7/2", "7/3", "8/1", "8/2", "8/3", "9/1", "9/2", "9/3", "10/1", "10/2", "10/3"];
 const marketTicks = ["7/28", "8/1", "8/4", "8/9", "8/12", "8/17"];
@@ -43,56 +47,128 @@ const toneStyles = {
   rose: "border-rose-200 bg-rose-50 text-rose-700"
 } as const;
 
+const quoteTermFilters = ["隔夜", "1周", "2周", "1个月", "3个月", "6个月", "9个月", "1年"] as const;
+const quoteTypeFilters = ["定期", "存单[1M/3M/6M/9M/12M]"] as const;
+
 function CardHead({ icon: Icon, title, subtitle }: { icon: ComponentType<{ className?: string }>; title: string; subtitle: string }) {
   return (
-    <div className="mb-4 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 p-3 text-white shadow-sm">
-          <Icon className="h-5 w-5" />
+    <div className="mb-3 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <div className="rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 p-2.5 text-white shadow-sm">
+          <Icon className="h-4 w-4" />
         </div>
         <div>
-          <h3 className="text-[34px] font-bold leading-none tracking-tight text-slate-900">{title}</h3>
-          <p className="mt-2 text-sm text-slate-500">{subtitle}</p>
+          <h3 className="text-[28px] font-bold leading-none tracking-tight text-slate-900">{title}</h3>
+          <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
         </div>
       </div>
-      <button className="rounded-xl bg-rose-50 px-4 py-2 text-sm font-medium text-rose-500 hover:bg-rose-100">
+      <button className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-100">
         查看更多 <ChevronDown className="ml-1 inline h-3 w-3" />
       </button>
     </div>
   );
 }
 
+function buildStackedAreaPoints(values: readonly number[], width: number, height: number, maxValue: number) {
+  return values
+    .map((v, idx) => {
+      const x = (idx / (values.length - 1)) * width;
+      const y = height - (v / maxValue) * height;
+      return `${x},${y}`;
+    })
+    .join(" ");
+}
+
 export function FundCockpitScreen() {
+  const [selectedTerm, setSelectedTerm] = useState<(typeof quoteTermFilters)[number]>("隔夜");
+  const [selectedType, setSelectedType] = useState<(typeof quoteTypeFilters)[number]>("定期");
+
+  const fundStack = useMemo(() => {
+    return fundSeries.map((d) => {
+      const sourceTotal = d.deposit + d.equity;
+      const appTotal = d.reserve + d.credit + d.interbank + d.invest;
+      return {
+        ...d,
+        sourceTotal,
+        appTotal,
+        reserveTop: d.reserve,
+        creditTop: d.reserve + d.credit,
+        interbankTop: d.reserve + d.credit + d.interbank,
+        investTop: appTotal
+      };
+    });
+  }, []);
+
+  const maxTotal = Math.max(...fundStack.map((x) => x.sourceTotal));
+  const chartWidth = 760;
+  const chartHeight = 210;
+
   return (
-    <section className="grid grid-cols-12 gap-5 text-sm">
+    <section className="grid grid-cols-12 gap-5 text-xs">
       <Card className="col-span-12 rounded-2xl bg-white/90 p-5 lg:col-span-4">
         <CardContent className="p-0">
           <CardHead icon={Activity} title="流动性比例" subtitle="Liquidity Ratio" />
 
-          <div className="mb-4 rounded-xl border border-blue-100 bg-sky-50 p-4">
-            <div className="mb-2 flex items-start justify-between">
-              <p className="text-slate-600">当前流动性比例</p>
-              <div className="text-right text-slate-700">
-                <p className="text-xs">监管标准</p>
-                <p className="text-3xl font-semibold text-slate-800">≥25%</p>
-                <p className="text-green-600">达标</p>
+          <Tabs defaultValue="current">
+            <TabsList className="w-full">
+              <TabsTrigger value="current" className="flex-1">当前笔记</TabsTrigger>
+              <TabsTrigger value="trend" className="flex-1">比例趋势</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="current">
+              <div className="mb-3 rounded-xl border border-blue-100 bg-sky-50 p-3">
+                <div className="mb-1.5 flex items-start justify-between">
+                  <p className="text-xs text-slate-600">当前流动性比例</p>
+                  <div className="text-right text-slate-700">
+                    <p className="text-[11px]">监管标准</p>
+                    <p className="text-2xl font-semibold text-slate-800">≥25%</p>
+                    <p className="text-xs text-green-600">达标</p>
+                  </div>
+                </div>
+                <p className="text-4xl font-extrabold tracking-tight text-blue-600">37.74%</p>
               </div>
-            </div>
-            <p className="text-5xl font-extrabold tracking-tight text-blue-600">37.74%</p>
-          </div>
+            </TabsContent>
+
+            <TabsContent value="trend">
+              <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="mb-2 text-xs text-slate-600">近6期流动性比例趋势（%）</p>
+                <svg viewBox="0 0 560 170" className="h-36 w-full">
+                  <polyline
+                    fill="none"
+                    stroke="#2563eb"
+                    strokeWidth="3"
+                    points={liquidityTrend
+                      .map((v, i) => `${20 + i * 104},${150 - (v - 34) * 15}`)
+                      .join(" ")}
+                  />
+                  {liquidityTrend.map((v, i) => (
+                    <g key={i}>
+                      <circle cx={20 + i * 104} cy={150 - (v - 34) * 15} r="4" fill="#fff" stroke="#2563eb" strokeWidth="2" />
+                      <text x={20 + i * 104} y={140 - (v - 34) * 15} textAnchor="middle" className="fill-slate-500 text-[10px]">{v.toFixed(2)}</text>
+                    </g>
+                  ))}
+                </svg>
+                <div className="grid grid-cols-6 text-center text-[10px] text-slate-500">
+                  {liquidityTicks.map((tick) => (
+                    <span key={tick}>{tick}</span>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           <div className="space-y-2">
             {liquidityRows.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.label} className={`flex items-center justify-between rounded-xl border px-4 py-3 ${toneStyles[item.tone]}`}>
-                  <p className="flex items-center gap-2 font-medium">
-                    <Icon className="h-4 w-4" />
+                <div key={item.label} className={`flex items-center justify-between rounded-xl border px-3 py-2.5 ${toneStyles[item.tone]}`}>
+                  <p className="flex items-center gap-2 text-xs font-medium">
+                    <Icon className="h-3.5 w-3.5" />
                     {item.label}
                   </p>
                   <p className="text-right">
-                    <span className="text-3xl font-bold">{item.value}</span>
-                    <span className="ml-2 text-xs">{item.unit}</span>
+                    <span className="text-2xl font-bold">{item.value}</span>
+                    <span className="ml-1 text-[11px]">{item.unit}</span>
                   </p>
                 </div>
               );
@@ -105,24 +181,24 @@ export function FundCockpitScreen() {
         <CardContent className="p-0">
           <CardHead icon={Clock3} title="同业资产期限分布" subtitle="Asset Term Distribution" />
 
-          <div className="mb-4 grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-orange-100 bg-orange-50 p-4">
-              <p className="text-slate-600">资产总额</p>
-              <p className="mt-2 text-5xl font-bold text-orange-600">417<span className="ml-1 text-xl">亿</span></p>
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-orange-100 bg-orange-50 p-3">
+              <p className="text-xs text-slate-600">资产总额</p>
+              <p className="mt-1 text-4xl font-bold text-orange-600">417<span className="ml-1 text-base">亿</span></p>
             </div>
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-              <p className="text-slate-600">最长期限</p>
-              <p className="mt-2 text-5xl font-bold text-emerald-600">1Y<span className="ml-1 text-2xl">85亿</span></p>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+              <p className="text-xs text-slate-600">最长期限</p>
+              <p className="mt-1 text-4xl font-bold text-emerald-600">1Y<span className="ml-1 text-lg">85亿</span></p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-4">
-            <div className="flex h-56 items-end gap-2 border-b border-l border-dashed border-slate-300 px-2 pb-1 pt-4">
+          <div className="rounded-xl border border-slate-200 p-3">
+            <div className="flex h-52 items-end gap-2 border-b border-l border-dashed border-slate-300 px-2 pb-1 pt-4">
               {barData.map((v, idx) => (
                 <div key={idx} className="flex-1 rounded-t-lg bg-gradient-to-t from-lime-400 via-emerald-400 to-emerald-600" style={{ height: `${v}%`, opacity: 0.6 + idx * 0.05 }} />
               ))}
             </div>
-            <div className="mt-2 grid grid-cols-8 text-center text-xs text-slate-500">
+            <div className="mt-2 grid grid-cols-8 text-center text-[10px] text-slate-500">
               {["1D", "7D", "1M", "2M", "3M", "6M", "9M", "1Y"].map((x) => (
                 <span key={x}>{x}</span>
               ))}
@@ -135,30 +211,30 @@ export function FundCockpitScreen() {
         <CardContent className="p-0">
           <CardHead icon={Coins} title="同业资产结构" subtitle="Asset Structure" />
 
-          <div className="mb-6 flex items-center justify-between rounded-xl border border-violet-100 bg-violet-50 p-4">
+          <div className="mb-4 flex items-center justify-between rounded-xl border border-violet-100 bg-violet-50 p-3">
             <div>
-              <p className="text-slate-600">资产总额</p>
-              <p className="mt-2 text-5xl font-bold text-violet-600">127.8<span className="ml-1 text-2xl">亿</span></p>
+              <p className="text-xs text-slate-600">资产总额</p>
+              <p className="mt-1 text-4xl font-bold text-violet-600">127.8<span className="ml-1 text-lg">亿</span></p>
             </div>
-            <div className="rounded-full bg-violet-100 p-3 text-violet-700">
-              <Coins className="h-7 w-7" />
+            <div className="rounded-full bg-violet-100 p-2.5 text-violet-700">
+              <Coins className="h-6 w-6" />
             </div>
           </div>
 
-          <div className="grid place-items-center py-3">
+          <div className="grid place-items-center py-2">
             <div
-              className="h-40 w-40 rounded-full"
+              className="h-36 w-36 rounded-full"
               style={{
                 background:
                   "conic-gradient(#f97316 0 45%, #8b5cf6 45% 75%, #5977e8 75% 100%)"
               }}
             >
-              <div className="m-auto mt-7 h-26 w-26 rounded-full bg-white" />
+              <div className="m-auto mt-6 h-24 w-24 rounded-full bg-white" />
             </div>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-slate-600">
-              <span className="inline-flex items-center gap-1"><i className="h-3 w-3 rounded-full bg-[#5977e8]" />活期 25%</span>
-              <span className="inline-flex items-center gap-1"><i className="h-3 w-3 rounded-full bg-orange-500" />定期 45%</span>
-              <span className="inline-flex items-center gap-1"><i className="h-3 w-3 rounded-full bg-violet-500" />存单 30%</span>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-600">
+              <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-[#5977e8]" />活期 25%</span>
+              <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-orange-500" />定期 45%</span>
+              <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-violet-500" />存单 30%</span>
             </div>
           </div>
         </CardContent>
@@ -166,41 +242,80 @@ export function FundCockpitScreen() {
 
       <Card className="col-span-12 rounded-2xl bg-white/90 p-5 lg:col-span-8">
         <CardContent className="p-0">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between">
             <div>
-              <h3 className="text-4xl font-bold text-slate-900">资金来源与应用</h3>
-              <p className="text-sm text-slate-500">Fund Source &amp; Application Analysis</p>
+              <h3 className="text-3xl font-bold text-slate-900">资金来源与应用</h3>
+              <p className="text-xs text-slate-500">Fund Source &amp; Application Analysis</p>
             </div>
-            <button className="rounded-xl bg-rose-50 px-4 py-2 text-sm font-medium text-rose-500 hover:bg-rose-100">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
+            <button className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-100">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
           </div>
 
-          <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-5">
-            {sourceCards.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.label} className={`rounded-xl border p-3 ${toneStyles[item.tone]}`}>
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="font-medium">{item.label}</p>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <p className="text-4xl font-bold text-slate-900">{item.value}</p>
-                  <p className="text-sm">{item.unit}</p>
-                  {item.change ? <p className="mt-1 text-xs text-rose-600">{item.change}</p> : null}
-                </div>
-              );
-            })}
+          <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3">
+              <p className="text-xs text-slate-600">资金来源 - 吸收存款</p>
+              <p className="mt-1 text-2xl font-bold text-rose-700">431 亿元</p>
+            </div>
+            <div className="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-3">
+              <p className="text-xs text-slate-600">资金来源 - 权益</p>
+              <p className="mt-1 text-2xl font-bold text-fuchsia-700">184 亿元</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs text-slate-600">资金来源总额</p>
+              <p className="mt-1 text-2xl font-bold text-slate-800">615 亿元</p>
+            </div>
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+              <p className="text-xs text-slate-600">资金应用 - 资金备付</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-700">106 亿元</p>
+            </div>
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
+              <p className="text-xs text-slate-600">资金应用 - 信贷业务</p>
+              <p className="mt-1 text-2xl font-bold text-blue-700">206 亿元</p>
+            </div>
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-3">
+              <p className="text-xs text-slate-600">资金应用总额</p>
+              <p className="mt-1 text-2xl font-bold text-orange-700">615 亿元</p>
+            </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-4">
-            <svg viewBox="0 0 820 220" className="h-56 w-full">
-              <polyline fill="none" stroke="#2563eb" strokeWidth="3" points="20,140 120,145 220,150 320,152 420,155 520,148 620,140 720,138 800,136" />
-              <polyline fill="none" stroke="#16a34a" strokeWidth="3" points="20,155 120,158 220,161 320,163 420,165 520,160 620,156 720,152 800,150" />
-              <polyline fill="none" stroke="#ea580c" strokeWidth="3" points="20,120 120,122 220,124 320,126 420,128 520,122 620,116 720,112 800,110" />
-              <polyline fill="none" stroke="#7c3aed" strokeWidth="3" points="20,130 120,132 220,134 320,136 420,138 520,130 620,126 720,122 800,120" />
-              <polyline fill="none" stroke="#dc2626" strokeWidth="4" points="20,70 120,74 220,76 320,80 420,82 520,78 620,76 720,74 800,72" />
+          <div className="rounded-xl border border-slate-200 p-3">
+            <svg viewBox={`0 0 ${chartWidth + 60} ${chartHeight + 50}`} className="h-60 w-full">
+              <g transform="translate(30,10)">
+                <polygon
+                  fill="rgba(16,185,129,0.22)"
+                  points={`0,${chartHeight} ${buildStackedAreaPoints(fundStack.map((x) => x.reserveTop), chartWidth, chartHeight, maxTotal)} ${chartWidth},${chartHeight}`}
+                />
+                <polygon
+                  fill="rgba(59,130,246,0.22)"
+                  points={`0,${chartHeight} ${buildStackedAreaPoints(fundStack.map((x) => x.creditTop), chartWidth, chartHeight, maxTotal)} ${chartWidth},${chartHeight}`}
+                />
+                <polygon
+                  fill="rgba(234,88,12,0.22)"
+                  points={`0,${chartHeight} ${buildStackedAreaPoints(fundStack.map((x) => x.interbankTop), chartWidth, chartHeight, maxTotal)} ${chartWidth},${chartHeight}`}
+                />
+                <polygon
+                  fill="rgba(139,92,246,0.22)"
+                  points={`0,${chartHeight} ${buildStackedAreaPoints(fundStack.map((x) => x.investTop), chartWidth, chartHeight, maxTotal)} ${chartWidth},${chartHeight}`}
+                />
+
+                <polyline fill="none" stroke="#e11d48" strokeWidth="3" points={buildStackedAreaPoints(fundStack.map((x) => x.deposit), chartWidth, chartHeight, maxTotal)} />
+                <polyline fill="none" stroke="#c026d3" strokeWidth="3" points={buildStackedAreaPoints(fundStack.map((x) => x.sourceTotal), chartWidth, chartHeight, maxTotal)} />
+                <polyline fill="none" stroke="#0ea5e9" strokeWidth="3" strokeDasharray="4 4" points={buildStackedAreaPoints(fundStack.map((x) => x.appTotal), chartWidth, chartHeight, maxTotal)} />
+
+                {fundStack.map((item, idx) => (
+                  <text key={item.month} x={(idx / (fundStack.length - 1)) * chartWidth} y={chartHeight + 20} textAnchor="middle" className="fill-slate-500 text-[10px]">
+                    {item.month}
+                  </text>
+                ))}
+              </g>
             </svg>
-            <div className="mt-2 flex flex-wrap justify-center gap-3 text-xs text-slate-600">
-              <span className="text-blue-600">— 存款准备金</span><span className="text-green-600">— 备付资金</span><span className="text-orange-600">— 信贷</span><span className="text-violet-600">— 投资用款</span><span className="text-red-600">— 吸收存款</span>
+            <div className="mt-1 flex flex-wrap justify-center gap-3 text-[11px] text-slate-600">
+              <span className="text-rose-600">— 资金来源：吸收存款</span>
+              <span className="text-fuchsia-600">— 资金来源：总额(吸收存款+权益)</span>
+              <span className="text-emerald-600">■ 资金备付</span>
+              <span className="text-blue-600">■ 信贷业务</span>
+              <span className="text-orange-600">■ 同业业务</span>
+              <span className="text-violet-600">■ 投资业务</span>
+              <span className="text-sky-500">-- 资金应用总额</span>
             </div>
           </div>
         </CardContent>
@@ -209,40 +324,73 @@ export function FundCockpitScreen() {
       <div className="col-span-12 grid gap-5 lg:col-span-4">
         <Card className="rounded-2xl bg-white/90 p-5">
           <CardContent className="p-0">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-3xl font-bold text-slate-800">同业市场报价</h3>
-              <button className="text-sm font-medium text-rose-500">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-2xl font-bold text-slate-800">同业市场报价</h3>
+              <button className="text-xs font-medium text-rose-500">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
             </div>
-            <svg viewBox="0 0 560 180" className="h-36 w-full">
+
+            <div className="mb-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+              <div>
+                <p className="mb-1 text-[11px] text-slate-500">期限筛选</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {quoteTermFilters.map((term) => (
+                    <button
+                      key={term}
+                      onClick={() => setSelectedTerm(term)}
+                      className={`rounded-full px-2 py-1 text-[11px] ${selectedTerm === term ? "bg-blue-600 text-white" : "bg-white text-slate-600"}`}
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-1 text-[11px] text-slate-500">类型筛选</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {quoteTypeFilters.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setSelectedType(type)}
+                      className={`rounded-full px-2 py-1 text-[11px] ${selectedType === type ? "bg-fuchsia-600 text-white" : "bg-white text-slate-600"}`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <svg viewBox="0 0 560 180" className="h-32 w-full">
               <polyline fill="none" stroke="#ec4899" strokeWidth="4" points="12,30 70,35 128,40 186,43 244,47 302,52 360,58 418,63 476,68 544,72" />
               {Array.from({ length: 10 }).map((_, i) => (
                 <circle key={i} cx={12 + i * 58} cy={30 + i * 4.8} r="4" fill="#fff" stroke="#ec4899" strokeWidth="3" />
               ))}
             </svg>
-            <div className="grid grid-cols-6 text-xs text-slate-500">
+            <div className="grid grid-cols-6 text-[10px] text-slate-500">
               {quoteTicks.map((x) => (
                 <span key={x}>{x}</span>
               ))}
             </div>
+            <p className="mt-2 text-[11px] text-slate-500">当前筛选：{selectedTerm} / {selectedType}</p>
           </CardContent>
         </Card>
 
         <Card className="rounded-2xl bg-white/90 p-5">
           <CardContent className="p-0">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-3xl font-bold text-slate-800">市场行情</h3>
-              <button className="text-sm font-medium text-rose-500">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-2xl font-bold text-slate-800">市场行情</h3>
+              <button className="text-xs font-medium text-rose-500">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
             </div>
-            <svg viewBox="0 0 560 180" className="h-36 w-full">
+            <svg viewBox="0 0 560 180" className="h-32 w-full">
               <polyline fill="none" stroke="#ef4444" strokeWidth="3" points="10,18 80,28 150,38 220,48 290,72 360,88 430,105 500,114 550,120" />
               <polyline fill="none" stroke="#2563eb" strokeWidth="3" points="10,20 80,26 150,36 220,44 290,68 360,86 430,103 500,112 550,118" />
             </svg>
-            <div className="grid grid-cols-6 text-xs text-slate-500">
+            <div className="grid grid-cols-6 text-[10px] text-slate-500">
               {marketTicks.map((x) => (
                 <span key={x}>{x}</span>
               ))}
             </div>
-            <p className="mt-3 text-center text-xs"><span className="text-red-500">-●- SHIBOR隔夜</span> <span className="ml-4 text-blue-500">-●- LPR 1年期</span></p>
+            <p className="mt-2 text-center text-[11px]"><span className="text-red-500">-●- SHIBOR隔夜</span> <span className="ml-3 text-blue-500">-●- LPR 1年期</span></p>
           </CardContent>
         </Card>
       </div>
