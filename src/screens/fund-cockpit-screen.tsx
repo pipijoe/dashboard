@@ -37,6 +37,14 @@ const fundSeries = [
 
 const quoteTicks = ["7/1", "7/2", "7/3", "8/1", "8/2", "8/3", "9/1", "9/2", "9/3", "10/1", "10/2", "10/3"];
 const marketTicks = ["7/28", "8/1", "8/4", "8/9", "8/12", "8/17"];
+const positionTrend = [92, 96, 95, 99, 104, 108];
+const positionTicks = ["6月", "7月", "8月", "9月", "10月", "11月"];
+
+const positionDetailRows = [
+  { month: "9月", value: "99", mom: "+4.21%", yoy: "+9.13%" },
+  { month: "10月", value: "104", mom: "+5.05%", yoy: "+10.64%" },
+  { month: "11月", value: "108", mom: "+3.85%", yoy: "+12.50%" }
+] as const;
 
 const toneStyles = {
   emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -58,7 +66,7 @@ function CardHead({ icon: Icon, title, subtitle }: { icon: ComponentType<{ class
           <Icon className="h-4 w-4" />
         </div>
         <div>
-          <h3 className="text-[28px] font-bold leading-none tracking-tight text-slate-900">{title}</h3>
+          <h3 className="text-2xl font-bold leading-none tracking-tight text-slate-900">{title}</h3>
           <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
         </div>
       </div>
@@ -82,6 +90,7 @@ function buildStackedAreaPoints(values: readonly number[], width: number, height
 export function FundCockpitScreen() {
   const [selectedTerm, setSelectedTerm] = useState<(typeof quoteTermFilters)[number]>("隔夜");
   const [selectedType, setSelectedType] = useState<(typeof quoteTypeFilters)[number]>("定期");
+  const [positionCompareMode, setPositionCompareMode] = useState<"mom" | "yoy">("mom");
 
   const fundStack = useMemo(() => {
     return fundSeries.map((d) => {
@@ -111,12 +120,12 @@ export function FundCockpitScreen() {
 
           <Tabs defaultValue="current">
             <TabsList className="w-full">
-              <TabsTrigger value="current" className="flex-1">当前笔记</TabsTrigger>
-              <TabsTrigger value="trend" className="flex-1">比例趋势</TabsTrigger>
+              <TabsTrigger value="current" className="flex-1">当前</TabsTrigger>
+              <TabsTrigger value="trend" className="flex-1">趋势</TabsTrigger>
             </TabsList>
 
             <TabsContent value="current">
-              <div className="mb-3 rounded-xl border border-blue-100 bg-sky-50 p-3">
+              <div className="mb-2 rounded-xl border border-blue-100 bg-sky-50 p-3">
                 <div className="mb-1.5 flex items-start justify-between">
                   <p className="text-xs text-slate-600">当前流动性比例</p>
                   <div className="text-right text-slate-700">
@@ -126,6 +135,23 @@ export function FundCockpitScreen() {
                   </div>
                 </div>
                 <p className="text-4xl font-extrabold tracking-tight text-blue-600">37.74%</p>
+              </div>
+              <div className="space-y-2">
+                {liquidityRows.slice(0, 2).map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={item.label} className={`flex items-center justify-between rounded-xl border px-3 py-2.5 ${toneStyles[item.tone]}`}>
+                      <p className="flex items-center gap-2 text-xs font-medium">
+                        <Icon className="h-3.5 w-3.5" />
+                        {item.label}
+                      </p>
+                      <p className="text-right">
+                        <span className="text-2xl font-bold">{item.value}</span>
+                        <span className="ml-1 text-[11px]">{item.unit}</span>
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </TabsContent>
 
@@ -154,88 +180,152 @@ export function FundCockpitScreen() {
                   ))}
                 </div>
               </div>
+              <div className={`flex items-center justify-between rounded-xl border px-3 py-2.5 ${toneStyles[liquidityRows[3].tone]}`}>
+                <p className="flex items-center gap-2 text-xs font-medium">
+                  <CircleAlert className="h-3.5 w-3.5" />
+                  本月最低流动性比例
+                </p>
+                <p className="text-right">
+                  <span className="text-2xl font-bold">35.14</span>
+                  <span className="ml-1 text-[11px]">%</span>
+                </p>
+              </div>
             </TabsContent>
           </Tabs>
+        </CardContent>
+      </Card>
 
-          <div className="space-y-2">
-            {liquidityRows.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.label} className={`flex items-center justify-between rounded-xl border px-3 py-2.5 ${toneStyles[item.tone]}`}>
-                  <p className="flex items-center gap-2 text-xs font-medium">
-                    <Icon className="h-3.5 w-3.5" />
-                    {item.label}
-                  </p>
-                  <p className="text-right">
-                    <span className="text-2xl font-bold">{item.value}</span>
-                    <span className="ml-1 text-[11px]">{item.unit}</span>
-                  </p>
+      <Card className="col-span-12 rounded-2xl bg-white/90 p-5 lg:col-span-4">
+        <CardContent className="p-0">
+          <CardHead icon={Clock3} title="同业资产分析" subtitle="Interbank Asset Analysis" />
+
+          <Tabs defaultValue="term">
+            <TabsList className="mb-3 w-full">
+              <TabsTrigger value="term" className="flex-1">同业期限</TabsTrigger>
+              <TabsTrigger value="structure" className="flex-1">同业结构</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="term">
+              <div className="mb-3 grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-orange-100 bg-orange-50 p-3">
+                  <p className="text-xs text-slate-600">资产总额</p>
+                  <p className="mt-1 text-4xl font-bold text-orange-600">417<span className="ml-1 text-base">亿</span></p>
                 </div>
-              );
-            })}
-          </div>
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                  <p className="text-xs text-slate-600">最长期限</p>
+                  <p className="mt-1 text-4xl font-bold text-emerald-600">1Y<span className="ml-1 text-lg">85亿</span></p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-3">
+                <div className="flex h-52 items-end gap-2 border-b border-l border-dashed border-slate-300 px-2 pb-1 pt-4">
+                  {barData.map((v, idx) => (
+                    <div key={idx} className="flex-1 rounded-t-lg bg-gradient-to-t from-lime-400 via-emerald-400 to-emerald-600" style={{ height: `${v}%`, opacity: 0.6 + idx * 0.05 }} />
+                  ))}
+                </div>
+                <div className="mt-2 grid grid-cols-8 text-center text-[10px] text-slate-500">
+                  {["1D", "7D", "1M", "2M", "3M", "6M", "9M", "1Y"].map((x) => (
+                    <span key={x}>{x}</span>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="structure">
+              <div className="mb-4 flex items-center justify-between rounded-xl border border-violet-100 bg-violet-50 p-3">
+                <div>
+                  <p className="text-xs text-slate-600">资产总额</p>
+                  <p className="mt-1 text-4xl font-bold text-violet-600">127.8<span className="ml-1 text-lg">亿</span></p>
+                </div>
+                <div className="rounded-full bg-violet-100 p-2.5 text-violet-700">
+                  <Coins className="h-6 w-6" />
+                </div>
+              </div>
+
+              <div className="grid place-items-center py-2">
+                <div
+                  className="h-36 w-36 rounded-full"
+                  style={{
+                    background:
+                      "conic-gradient(#f97316 0 45%, #8b5cf6 45% 75%, #5977e8 75% 100%)"
+                  }}
+                >
+                  <div className="m-auto mt-6 h-24 w-24 rounded-full bg-white" />
+                </div>
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-600">
+                  <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-[#5977e8]" />活期 25%</span>
+                  <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-orange-500" />定期 45%</span>
+                  <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-violet-500" />存单 30%</span>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
       <Card className="col-span-12 rounded-2xl bg-white/90 p-5 lg:col-span-4">
         <CardContent className="p-0">
-          <CardHead icon={Clock3} title="同业资产期限分布" subtitle="Asset Term Distribution" />
-
-          <div className="mb-3 grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-orange-100 bg-orange-50 p-3">
-              <p className="text-xs text-slate-600">资产总额</p>
-              <p className="mt-1 text-4xl font-bold text-orange-600">417<span className="ml-1 text-base">亿</span></p>
-            </div>
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-              <p className="text-xs text-slate-600">最长期限</p>
-              <p className="mt-1 text-4xl font-bold text-emerald-600">1Y<span className="ml-1 text-lg">85亿</span></p>
+          <CardHead icon={Wallet} title="头寸趋势分析" subtitle="Position Trend Analysis" />
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs text-slate-500">趋势折线图与数据明细表结合，支持同比/环比分析</p>
+            <div className="rounded-lg bg-slate-100 p-1 text-[11px]">
+              <button
+                onClick={() => setPositionCompareMode("mom")}
+                className={`rounded-md px-2 py-1 ${positionCompareMode === "mom" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}
+              >
+                环比
+              </button>
+              <button
+                onClick={() => setPositionCompareMode("yoy")}
+                className={`rounded-md px-2 py-1 ${positionCompareMode === "yoy" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}
+              >
+                同比
+              </button>
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-3">
-            <div className="flex h-52 items-end gap-2 border-b border-l border-dashed border-slate-300 px-2 pb-1 pt-4">
-              {barData.map((v, idx) => (
-                <div key={idx} className="flex-1 rounded-t-lg bg-gradient-to-t from-lime-400 via-emerald-400 to-emerald-600" style={{ height: `${v}%`, opacity: 0.6 + idx * 0.05 }} />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <svg viewBox="0 0 560 170" className="h-36 w-full">
+              <polyline
+                fill="none"
+                stroke="#0ea5e9"
+                strokeWidth="3"
+                points={positionTrend.map((v, i) => `${20 + i * 104},${150 - (v - 88) * 4}`).join(" ")}
+              />
+              {positionTrend.map((v, i) => (
+                <g key={positionTicks[i]}>
+                  <circle cx={20 + i * 104} cy={150 - (v - 88) * 4} r="4" fill="#fff" stroke="#0ea5e9" strokeWidth="2" />
+                </g>
+              ))}
+            </svg>
+            <div className="grid grid-cols-6 text-center text-[10px] text-slate-500">
+              {positionTicks.map((tick) => (
+                <span key={tick}>{tick}</span>
               ))}
             </div>
-            <div className="mt-2 grid grid-cols-8 text-center text-[10px] text-slate-500">
-              {["1D", "7D", "1M", "2M", "3M", "6M", "9M", "1Y"].map((x) => (
-                <span key={x}>{x}</span>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="col-span-12 rounded-2xl bg-white/90 p-5 lg:col-span-4">
-        <CardContent className="p-0">
-          <CardHead icon={Coins} title="同业资产结构" subtitle="Asset Structure" />
-
-          <div className="mb-4 flex items-center justify-between rounded-xl border border-violet-100 bg-violet-50 p-3">
-            <div>
-              <p className="text-xs text-slate-600">资产总额</p>
-              <p className="mt-1 text-4xl font-bold text-violet-600">127.8<span className="ml-1 text-lg">亿</span></p>
-            </div>
-            <div className="rounded-full bg-violet-100 p-2.5 text-violet-700">
-              <Coins className="h-6 w-6" />
-            </div>
           </div>
 
-          <div className="grid place-items-center py-2">
-            <div
-              className="h-36 w-36 rounded-full"
-              style={{
-                background:
-                  "conic-gradient(#f97316 0 45%, #8b5cf6 45% 75%, #5977e8 75% 100%)"
-              }}
-            >
-              <div className="m-auto mt-6 h-24 w-24 rounded-full bg-white" />
-            </div>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-600">
-              <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-[#5977e8]" />活期 25%</span>
-              <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-orange-500" />定期 45%</span>
-              <span className="inline-flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-violet-500" />存单 30%</span>
-            </div>
+          <div className="mt-3 rounded-xl border border-slate-200">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-slate-50 text-slate-500">
+                <tr>
+                  <th className="px-3 py-2">月份</th>
+                  <th className="px-3 py-2">头寸(亿)</th>
+                  <th className="px-3 py-2">{positionCompareMode === "mom" ? "环比" : "同比"}</th>
+                  <th className="px-3 py-2 text-right">同比</th>
+                </tr>
+              </thead>
+              <tbody>
+                {positionDetailRows.map((row) => (
+                  <tr key={row.month} className="border-t border-slate-100 text-slate-700">
+                    <td className="px-3 py-2">{row.month}</td>
+                    <td className="px-3 py-2">{row.value}</td>
+                    <td className="px-3 py-2 text-emerald-600">{positionCompareMode === "mom" ? row.mom : row.yoy}</td>
+                    <td className="px-3 py-2 text-right text-blue-600">{row.yoy}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
@@ -244,7 +334,7 @@ export function FundCockpitScreen() {
         <CardContent className="p-0">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <h3 className="text-3xl font-bold text-slate-900">资金来源与应用</h3>
+              <h3 className="text-2xl font-bold text-slate-900">资金来源与应用</h3>
               <p className="text-xs text-slate-500">Fund Source &amp; Application Analysis</p>
             </div>
             <button className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-100">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
@@ -325,7 +415,7 @@ export function FundCockpitScreen() {
         <Card className="rounded-2xl bg-white/90 p-5">
           <CardContent className="p-0">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-2xl font-bold text-slate-800">同业市场报价</h3>
+              <h3 className="text-xl font-bold text-slate-800">同业市场报价</h3>
               <button className="text-xs font-medium text-rose-500">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
             </div>
 
@@ -378,7 +468,7 @@ export function FundCockpitScreen() {
         <Card className="rounded-2xl bg-white/90 p-5">
           <CardContent className="p-0">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-2xl font-bold text-slate-800">市场行情</h3>
+              <h3 className="text-xl font-bold text-slate-800">市场行情</h3>
               <button className="text-xs font-medium text-rose-500">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
             </div>
             <svg viewBox="0 0 560 180" className="h-32 w-full">
