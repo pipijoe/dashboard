@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 const menuItems = [
   { label: "银行关系大屏", path: "/screens/bank-relationship" },
   { label: "资金驾驶舱大屏", path: "/screens/fund-cockpit" },
-  { label: "账户管理大屏", path: "/screens/account-management" }
+  { label: "账户管理大屏", path: "/screens/account-management" },
+  { label: "资金配置", path: "/screens/fund-configuration" }
 ];
 
 interface ScreenShellProps extends PropsWithChildren {

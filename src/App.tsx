@@ -4,6 +4,7 @@ import { ScreenShell } from "@/components/screen-shell";
 import { AccountManagementScreen } from "@/screens/account-management-screen";
 import { BankRelationshipScreen } from "@/screens/bank-relationship-screen";
 import { FundCockpitScreen } from "@/screens/fund-cockpit-screen";
+import { FundConfigurationScreen } from "@/screens/fund-configuration-screen";
 
 export default function App() {
   return (
@@ -30,6 +31,14 @@ export default function App() {
         element={
           <ScreenShell title="账户管理大屏" currentPath="/screens/account-management">
             <AccountManagementScreen />
+          </ScreenShell>
+        }
+      />
+      <Route
+        path="/screens/fund-configuration"
+        element={
+          <ScreenShell title="资金配置" currentPath="/screens/fund-configuration">
+            <FundConfigurationScreen />
           </ScreenShell>
         }
       />
