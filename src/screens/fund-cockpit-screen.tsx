@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 
 import {
   Activity,
@@ -81,30 +82,6 @@ function CardHead({ icon: Icon, title, subtitle }: { icon: ComponentType<{ class
   );
 }
 
-function buildPolylinePoints(values: readonly number[], width: number, yPosition: (value: number) => number) {
-  return values
-    .map((v, idx) => {
-      const x = (idx / (values.length - 1)) * width;
-      return `${x},${yPosition(v)}`;
-    })
-    .join(" ");
-}
-
-function buildAreaBandPath(
-  lowerValues: readonly number[],
-  upperValues: readonly number[],
-  width: number,
-  yPosition: (value: number) => number
-) {
-  const upperPath = upperValues
-    .map((v, idx) => `${(idx / (upperValues.length - 1)) * width},${yPosition(v)}`)
-    .join(" L ");
-  const lowerPath = lowerValues
-    .map((v, idx) => `${((lowerValues.length - 1 - idx) / (lowerValues.length - 1)) * width},${yPosition(lowerValues[lowerValues.length - 1 - idx])}`)
-    .join(" L ");
-  return `M ${upperPath} L ${lowerPath} Z`;
-}
-
 export function FundCockpitScreen() {
   const [selectedType, setSelectedType] = useState<(typeof quoteTypeFilters)[number]>("定期");
   const [selectedTerm, setSelectedTerm] = useState<QuoteTerm>("1年");
@@ -116,50 +93,95 @@ export function FundCockpitScreen() {
   }, [selectedType]);
 
   const fundStack = useMemo(() => {
-    return fundSeries.map((d) => {
-      const sourceTotal = d.deposit + d.equity;
-      const reserve = -d.reserve;
-      const credit = -d.credit;
-      const interbank = -d.interbank;
-      const invest = -d.invest;
-      const appTotal = reserve + credit + interbank + invest;
-      const balanceDiff = sourceTotal + appTotal;
-      return {
-        ...d,
-        sourceTotal,
-        reserve,
-        credit,
-        interbank,
-        invest,
-        appTotal,
-        balanceDiff,
-        sourceDepositTop: d.deposit,
-        sourceEquityTop: sourceTotal,
-        appReserveTop: reserve,
-        appCreditTop: reserve + credit,
-        appInterbankTop: reserve + credit + interbank,
-        appInvestTop: appTotal
-      };
-    });
+    return fundSeries.map((d) => ({
+      ...d,
+      sourceTotal: d.deposit + d.equity,
+      appTotal: d.reserve + d.credit + d.interbank + d.invest
+    }));
   }, []);
 
-  const maxTotal = Math.max(...fundStack.map((x) => Math.max(x.sourceTotal, Math.abs(x.appTotal))));
   const latestFund = fundStack[fundStack.length - 1];
-  const [hoveredFundMonth, setHoveredFundMonth] = useState<(typeof fundStack)[number] | null>(null);
+  const themeRiverRef = useRef<HTMLDivElement | null>(null);
   const sourceDetails = [
     { label: "吸收存款", value: latestFund.deposit, color: "text-emerald-700" },
     { label: "权益资金", value: latestFund.equity, color: "text-amber-700" }
   ] as const;
   const appDetails = [
-    { label: "资金备付", value: Math.abs(latestFund.reserve), color: "text-cyan-700" },
-    { label: "信贷业务", value: Math.abs(latestFund.credit), color: "text-blue-700" },
-    { label: "同业业务", value: Math.abs(latestFund.interbank), color: "text-sky-700" },
-    { label: "投资业务", value: Math.abs(latestFund.invest), color: "text-slate-700" }
+    { label: "资金备付", value: latestFund.reserve, color: "text-cyan-700" },
+    { label: "信贷业务", value: latestFund.credit, color: "text-blue-700" },
+    { label: "同业业务", value: latestFund.interbank, color: "text-sky-700" },
+    { label: "投资业务", value: latestFund.invest, color: "text-slate-700" }
   ] as const;
-  const chartWidth = 760;
-  const chartHeight = 280;
-  const centerY = chartHeight / 2;
-  const yPosition = (value: number) => centerY - (value / maxTotal) * (chartHeight / 2 - 18);
+
+  useEffect(() => {
+    let disposed = false;
+    let chart: { setOption: (option: unknown) => void; resize: () => void; dispose: () => void } | null = null;
+
+    const loadThemeRiver = async () => {
+      if (!themeRiverRef.current) return () => undefined;
+
+      if (!(window as Window & { echarts?: unknown }).echarts) {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js";
+        script.async = true;
+        document.body.appendChild(script);
+        await new Promise<void>((resolve, reject) => {
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("ECharts 加载失败"));
+        });
+      }
+
+      if (disposed || !themeRiverRef.current) return () => undefined;
+
+      const echarts = (window as unknown as Window & {
+        echarts: { init: (el: HTMLDivElement) => { setOption: (option: unknown) => void; resize: () => void; dispose: () => void } };
+      }).echarts;
+      chart = echarts.init(themeRiverRef.current);
+
+      const riverData = fundSeries.flatMap((item) => [
+        [item.month, item.deposit, "吸收存款"],
+        [item.month, item.equity, "权益资金"],
+        [item.month, item.reserve, "资金备付"],
+        [item.month, item.credit, "信贷业务"],
+        [item.month, item.interbank, "同业业务"],
+        [item.month, item.invest, "投资业务"]
+      ]);
+
+      chart.setOption({
+        color: ["#16a34a", "#d97706", "#0891b2", "#2563eb", "#0284c7", "#475569"],
+        tooltip: { trigger: "axis", axisPointer: { type: "line" } },
+        legend: { top: 0, textStyle: { color: "#475569", fontSize: 11 } },
+        singleAxis: {
+          top: 36,
+          bottom: 24,
+          type: "category",
+          data: fundSeries.map((item) => item.month),
+          axisLine: { lineStyle: { color: "#cbd5e1" } },
+          axisLabel: { color: "#64748b" }
+        },
+        series: [
+          {
+            type: "themeRiver",
+            emphasis: { itemStyle: { shadowBlur: 16, shadowColor: "rgba(15,23,42,0.25)" }, label: { show: false } },
+            label: { show: false },
+            data: riverData
+          }
+        ]
+      });
+
+      const onResize = () => chart?.resize();
+      window.addEventListener("resize", onResize);
+      return () => window.removeEventListener("resize", onResize);
+    };
+
+    const cleanupPromise = loadThemeRiver();
+
+    return () => {
+      disposed = true;
+      cleanupPromise.then((cleanup) => cleanup()).catch(() => undefined);
+      chart?.dispose();
+    };
+  }, []);
 
   return (
     <section className="grid grid-cols-12 gap-5 text-xs">
@@ -406,7 +428,7 @@ export function FundCockpitScreen() {
 
               <div className="rounded-xl border border-sky-200 bg-sky-50 p-3">
                 <p className="text-xs text-slate-600">资金应用</p>
-                <p className="mt-1 text-4xl font-bold text-sky-700">{Math.abs(latestFund.appTotal)}<span className="ml-1 text-base font-semibold">亿元</span></p>
+                <p className="mt-1 text-4xl font-bold text-sky-700">{latestFund.appTotal}<span className="ml-1 text-base font-semibold">亿元</span></p>
                 <div className="mt-3 space-y-1.5">
                   {appDetails.map((item) => (
                     <div key={item.label} className="flex items-center justify-between rounded-lg border border-sky-100 bg-white/80 px-2.5 py-1.5 text-[11px]">
@@ -422,113 +444,7 @@ export function FundCockpitScreen() {
               <div className="mb-2 flex items-center justify-between text-[11px]">
                 <p className="font-medium text-slate-700">主题河流图（资金来源与应用趋势）</p>
               </div>
-              <svg viewBox={`0 0 ${chartWidth + 60} ${chartHeight + 60}`} className="h-64 w-full">
-                <g transform="translate(30,15)">
-                  <path
-                    fill="rgba(22,163,74,0.35)"
-                    d={buildAreaBandPath(
-                      fundStack.map(() => 0),
-                      fundStack.map((x) => x.sourceDepositTop),
-                      chartWidth,
-                      yPosition
-                    )}
-                  />
-                  <path
-                    fill="rgba(217,119,6,0.32)"
-                    d={buildAreaBandPath(
-                      fundStack.map((x) => x.sourceDepositTop),
-                      fundStack.map((x) => x.sourceEquityTop),
-                      chartWidth,
-                      yPosition
-                    )}
-                  />
-                  <path
-                    fill="rgba(14,116,144,0.35)"
-                    d={buildAreaBandPath(
-                      fundStack.map(() => 0),
-                      fundStack.map((x) => x.appReserveTop),
-                      chartWidth,
-                      yPosition
-                    )}
-                  />
-                  <path
-                    fill="rgba(37,99,235,0.33)"
-                    d={buildAreaBandPath(
-                      fundStack.map((x) => x.appReserveTop),
-                      fundStack.map((x) => x.appCreditTop),
-                      chartWidth,
-                      yPosition
-                    )}
-                  />
-                  <path
-                    fill="rgba(8,145,178,0.32)"
-                    d={buildAreaBandPath(
-                      fundStack.map((x) => x.appCreditTop),
-                      fundStack.map((x) => x.appInterbankTop),
-                      chartWidth,
-                      yPosition
-                    )}
-                  />
-                  <path
-                    fill="rgba(71,85,105,0.34)"
-                    d={buildAreaBandPath(
-                      fundStack.map((x) => x.appInterbankTop),
-                      fundStack.map((x) => x.appInvestTop),
-                      chartWidth,
-                      yPosition
-                    )}
-                  />
-
-                  <polyline fill="none" stroke="#166534" strokeWidth="2.4" points={buildPolylinePoints(fundStack.map((x) => x.sourceTotal), chartWidth, yPosition)} />
-                  <polyline fill="none" stroke="#1d4ed8" strokeWidth="2.4" points={buildPolylinePoints(fundStack.map((x) => x.appTotal), chartWidth, yPosition)} />
-
-                  {fundStack.map((item, idx) => (
-                    <text key={item.month} x={(idx / (fundStack.length - 1)) * chartWidth} y={chartHeight + 22} textAnchor="middle" className="fill-slate-500 text-[10px]">
-                      {item.month}
-                    </text>
-                  ))}
-
-                  {fundStack.map((item, idx) => {
-                    const segmentWidth = chartWidth / Math.max(fundStack.length - 1, 1);
-                    const x = (idx / Math.max(fundStack.length - 1, 1)) * chartWidth;
-                    return (
-                      <rect
-                        key={`${item.month}-hover`}
-                        x={Math.max(0, x - segmentWidth / 2)}
-                        y={0}
-                        width={segmentWidth}
-                        height={chartHeight}
-                        fill="transparent"
-                        onMouseEnter={() => setHoveredFundMonth(item)}
-                        onMouseLeave={() => setHoveredFundMonth(null)}
-                      />
-                    );
-                  })}
-                </g>
-              </svg>
-
-              {hoveredFundMonth ? (
-                <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-700">
-                  <p className="mb-1 font-semibold text-slate-800">{hoveredFundMonth.month}</p>
-                  <div className="grid gap-x-3 gap-y-1 sm:grid-cols-2">
-                    <span>吸收存款：{hoveredFundMonth.deposit} 亿元</span>
-                    <span>权益资金：{hoveredFundMonth.equity} 亿元</span>
-                    <span>资金备付：{Math.abs(hoveredFundMonth.reserve)} 亿元</span>
-                    <span>信贷业务：{Math.abs(hoveredFundMonth.credit)} 亿元</span>
-                    <span>同业业务：{Math.abs(hoveredFundMonth.interbank)} 亿元</span>
-                    <span>投资业务：{Math.abs(hoveredFundMonth.invest)} 亿元</span>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] text-slate-600">
-                <span className="text-green-700">■ 吸收存款</span>
-                <span className="text-amber-700">■ 权益</span>
-                <span className="text-cyan-700">■ 资金备付</span>
-                <span className="text-blue-700">■ 信贷业务</span>
-                <span className="text-sky-700">■ 同业业务</span>
-                <span className="text-slate-700">■ 投资业务</span>
-              </div>
+              <div ref={themeRiverRef} className="h-64 w-full" />
             </div>
           </div>
         </CardContent>
