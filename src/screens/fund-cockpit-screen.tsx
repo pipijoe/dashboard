@@ -306,7 +306,7 @@ export function FundCockpitScreen() {
                 </div>
                 <div className="flex h-40 items-end gap-1.5 rounded-lg border border-slate-200 bg-white px-2 pb-1.5 pt-3 shadow-[inset_0_-1px_0_#f1f5f9]">
                   {barData.map((v, idx) => (
-                    <div key={idx} className="relative flex flex-1 items-end">
+                    <div key={idx} className="relative flex h-full flex-1 items-end">
                       <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] text-slate-400">{v}</span>
                       <div
                         className="w-full rounded-t-md bg-gradient-to-t from-emerald-300 via-cyan-400 to-blue-500 shadow-[0_2px_8px_rgba(14,116,144,0.25)]"
