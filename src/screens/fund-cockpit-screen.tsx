@@ -108,6 +108,7 @@ export function FundCockpitScreen() {
     x: number;
     y: number;
   } | null>(null);
+  const [hoveredTermBar, setHoveredTermBar] = useState<{ value: number; index: number } | null>(null);
   const sourceDetails = [
     { label: "吸收存款", value: latestFund.deposit, color: "text-emerald-700" },
     { label: "权益资金", value: latestFund.equity, color: "text-amber-700" }
@@ -299,21 +300,37 @@ export function FundCockpitScreen() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
+              <div className="p-2.5">
                 <div className="mb-2 flex items-center justify-between text-[10px] text-slate-500">
                   <span>期限分布（亿）</span>
                   <span>总量：417亿</span>
                 </div>
-                <div className="flex h-40 items-end gap-1.5 rounded-lg border border-slate-200 bg-white px-2 pb-1.5 pt-3 shadow-[inset_0_-1px_0_#f1f5f9]">
+                <div className="relative flex h-40 items-end gap-1.5 rounded-lg border border-rose-100 px-2 pb-1.5 pt-3">
                   {barData.map((v, idx) => (
-                    <div key={idx} className="relative flex h-full flex-1 items-end">
-                      <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] text-slate-400">{v}</span>
+                    <div
+                      key={idx}
+                      className="relative flex h-full flex-1 items-end"
+                      onMouseEnter={() => setHoveredTermBar({ value: v, index: idx })}
+                      onMouseLeave={() => setHoveredTermBar(null)}
+                    >
                       <div
-                        className="w-full rounded-t-md bg-gradient-to-t from-emerald-300 via-cyan-400 to-blue-500 shadow-[0_2px_8px_rgba(14,116,144,0.25)]"
-                        style={{ height: `${v}%`, opacity: 0.65 + idx * 0.04 }}
+                        className="w-full rounded-t-md bg-rose-500 shadow-[0_2px_8px_rgba(225,29,72,0.25)] transition-opacity duration-150 hover:opacity-90"
+                        style={{ height: `${v}%`, opacity: 0.75 }}
                       />
                     </div>
                   ))}
+                  {hoveredTermBar ? (
+                    <div
+                      className="pointer-events-none absolute rounded-md border border-rose-200 bg-white/95 px-2 py-1 text-[10px] text-rose-600 shadow"
+                      style={{
+                        left: `calc(${((hoveredTermBar.index + 0.5) / barData.length) * 100}% - 2px)`,
+                        top: "4px",
+                        transform: "translateX(-50%)"
+                      }}
+                    >
+                      {hoveredTermBar.value}亿
+                    </div>
+                  ) : null}
                 </div>
                 <div className="mt-1.5 grid grid-cols-8 text-center text-[10px] text-slate-500">
                   {["1D", "7D", "1M", "2M", "3M", "6M", "9M", "1Y"].map((x) => (
