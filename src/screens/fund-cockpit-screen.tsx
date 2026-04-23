@@ -102,6 +102,13 @@ export function FundCockpitScreen() {
 
   const latestFund = fundStack[fundStack.length - 1];
   const [highlightedRiver, setHighlightedRiver] = useState<string | null>(null);
+  const [hoveredRiverPoint, setHoveredRiverPoint] = useState<{
+    month: string;
+    label: string;
+    value: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const sourceDetails = [
     { label: "吸收存款", value: latestFund.deposit, color: "text-emerald-700" },
     { label: "权益资金", value: latestFund.equity, color: "text-amber-700" }
@@ -139,9 +146,27 @@ export function FundCockpitScreen() {
     const scaleY = drawableHeight / maxTotal;
     const centerY = height / 2;
 
+    const toSmoothPath = (points: Array<{ x: number; y: number }>) => {
+      if (points.length === 0) {
+        return "";
+      }
+      if (points.length === 1) {
+        return `M ${points[0].x} ${points[0].y}`;
+      }
+      let path = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 1; i < points.length; i += 1) {
+        const prev = points[i - 1];
+        const current = points[i];
+        const cpX = (prev.x + current.x) / 2;
+        path += ` C ${cpX} ${prev.y}, ${cpX} ${current.y}, ${current.x} ${current.y}`;
+      }
+      return path;
+    };
+
     const layers = riverSeries.map((series) => {
-      const topPoints: string[] = [];
-      const bottomPoints: string[] = [];
+      const topPoints: Array<{ x: number; y: number }> = [];
+      const bottomPoints: Array<{ x: number; y: number }> = [];
+      const centers: Array<{ x: number; y: number; value: number; month: string }> = [];
 
       fundSeries.forEach((item, index) => {
         const x = padX + index * xStep;
@@ -152,13 +177,18 @@ export function FundCockpitScreen() {
           .reduce((sum, entry) => sum + item[entry.key], 0);
         const currentTop = baseline + previousValue * scaleY;
         const currentBottom = currentTop + item[series.key] * scaleY;
-        topPoints.push(`${x},${currentTop}`);
-        bottomPoints.push(`${x},${currentBottom}`);
+        topPoints.push({ x, y: currentTop });
+        bottomPoints.push({ x, y: currentBottom });
+        centers.push({ x, y: (currentTop + currentBottom) / 2, value: item[series.key], month: item.month });
       });
+
+      const topPath = toSmoothPath(topPoints);
+      const bottomPath = toSmoothPath([...bottomPoints].reverse());
 
       return {
         ...series,
-        path: `M ${topPoints.join(" L ")} L ${bottomPoints.reverse().join(" L ")} Z`
+        path: `${topPath} L ${bottomPoints[bottomPoints.length - 1].x} ${bottomPoints[bottomPoints.length - 1].y} ${bottomPath.slice(1)} Z`,
+        centers
       };
     });
 
@@ -439,7 +469,20 @@ export function FundCockpitScreen() {
                   </button>
                 ))}
               </div>
-              <svg viewBox={`0 0 ${riverLayout.width} ${riverLayout.height}`} className="h-64 w-full">
+              <div className="relative">
+                {hoveredRiverPoint ? (
+                  <div
+                    className="pointer-events-none absolute z-10 rounded-lg border border-slate-200 bg-white/95 px-2 py-1 text-[11px] text-slate-700 shadow"
+                    style={{
+                      left: `${(hoveredRiverPoint.x / riverLayout.width) * 100}%`,
+                      top: `${(hoveredRiverPoint.y / riverLayout.height) * 100}%`,
+                      transform: "translate(-50%, -120%)"
+                    }}
+                  >
+                    {hoveredRiverPoint.month} {hoveredRiverPoint.label} {hoveredRiverPoint.value}亿
+                  </div>
+                ) : null}
+                <svg viewBox={`0 0 ${riverLayout.width} ${riverLayout.height}`} className="h-64 w-full">
                 {riverLayout.layers.map((series) => {
                   const dimmed = highlightedRiver !== null && highlightedRiver !== series.label;
                   return (
@@ -450,10 +493,35 @@ export function FundCockpitScreen() {
                       opacity={dimmed ? 0.25 : 0.88}
                       className="transition-opacity duration-200"
                       onMouseEnter={() => setHighlightedRiver(series.label)}
-                      onMouseLeave={() => setHighlightedRiver(null)}
+                      onMouseLeave={() => {
+                        setHighlightedRiver(null);
+                        setHoveredRiverPoint(null);
+                      }}
                     />
                   );
                 })}
+                {riverLayout.layers.flatMap((series) =>
+                  series.centers.map((point) => (
+                    <circle
+                      key={`${series.key}-${point.month}`}
+                      cx={point.x}
+                      cy={point.y}
+                      r="9"
+                      fill="transparent"
+                      onMouseEnter={() => {
+                        setHighlightedRiver(series.label);
+                        setHoveredRiverPoint({
+                          month: point.month,
+                          label: series.label,
+                          value: point.value,
+                          x: point.x,
+                          y: point.y
+                        });
+                      }}
+                      onMouseLeave={() => setHoveredRiverPoint(null)}
+                    />
+                  ))
+                )}
                 {fundSeries.map((item, index) => {
                   const x = riverLayout.padX + index * ((riverLayout.width - riverLayout.padX * 2) / (fundSeries.length - 1));
                   return (
@@ -462,7 +530,8 @@ export function FundCockpitScreen() {
                     </text>
                   );
                 })}
-              </svg>
+                </svg>
+              </div>
             </div>
           </div>
         </CardContent>
