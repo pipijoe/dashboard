@@ -77,14 +77,28 @@ function CardHead({ icon: Icon, title, subtitle }: { icon: ComponentType<{ class
   );
 }
 
-function buildStackedAreaPoints(values: readonly number[], width: number, height: number, maxValue: number) {
+function buildPolylinePoints(values: readonly number[], width: number, yPosition: (value: number) => number) {
   return values
     .map((v, idx) => {
       const x = (idx / (values.length - 1)) * width;
-      const y = height - (v / maxValue) * height;
-      return `${x},${y}`;
+      return `${x},${yPosition(v)}`;
     })
     .join(" ");
+}
+
+function buildAreaBandPath(
+  lowerValues: readonly number[],
+  upperValues: readonly number[],
+  width: number,
+  yPosition: (value: number) => number
+) {
+  const upperPath = upperValues
+    .map((v, idx) => `${(idx / (upperValues.length - 1)) * width},${yPosition(v)}`)
+    .join(" L ");
+  const lowerPath = lowerValues
+    .map((v, idx) => `${((lowerValues.length - 1 - idx) / (lowerValues.length - 1)) * width},${yPosition(lowerValues[lowerValues.length - 1 - idx])}`)
+    .join(" L ");
+  return `M ${upperPath} L ${lowerPath} Z`;
 }
 
 export function FundCockpitScreen() {
@@ -95,22 +109,38 @@ export function FundCockpitScreen() {
   const fundStack = useMemo(() => {
     return fundSeries.map((d) => {
       const sourceTotal = d.deposit + d.equity;
-      const appTotal = d.reserve + d.credit + d.interbank + d.invest;
+      const reserve = -d.reserve;
+      const credit = -d.credit;
+      const interbank = -d.interbank;
+      const invest = -d.invest;
+      const appTotal = reserve + credit + interbank + invest;
+      const balanceDiff = sourceTotal + appTotal;
       return {
         ...d,
         sourceTotal,
+        reserve,
+        credit,
+        interbank,
+        invest,
         appTotal,
-        reserveTop: d.reserve,
-        creditTop: d.reserve + d.credit,
-        interbankTop: d.reserve + d.credit + d.interbank,
-        investTop: appTotal
+        balanceDiff,
+        sourceDepositTop: d.deposit,
+        sourceEquityTop: sourceTotal,
+        appReserveTop: reserve,
+        appCreditTop: reserve + credit,
+        appInterbankTop: reserve + credit + interbank,
+        appInvestTop: appTotal
       };
     });
   }, []);
 
-  const maxTotal = Math.max(...fundStack.map((x) => x.sourceTotal));
+  const maxTotal = Math.max(...fundStack.map((x) => Math.max(x.sourceTotal, Math.abs(x.appTotal))));
+  const isBalanced = fundStack.every((x) => Math.abs(x.balanceDiff) <= 0.01);
+  const latestFund = fundStack[fundStack.length - 1];
   const chartWidth = 760;
-  const chartHeight = 210;
+  const chartHeight = 280;
+  const centerY = chartHeight / 2;
+  const yPosition = (value: number) => centerY - (value / maxTotal) * (chartHeight / 2 - 18);
 
   return (
     <section className="grid grid-cols-12 gap-5 text-xs">
@@ -340,72 +370,107 @@ export function FundCockpitScreen() {
             <button className="rounded-xl bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-100">查看更多 <ChevronDown className="ml-1 inline h-3 w-3" /></button>
           </div>
 
-          <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3">
-              <p className="text-xs text-slate-600">资金来源 - 吸收存款</p>
-              <p className="mt-1 text-2xl font-bold text-rose-700">431 亿元</p>
-            </div>
-            <div className="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-3">
-              <p className="text-xs text-slate-600">资金来源 - 权益</p>
-              <p className="mt-1 text-2xl font-bold text-fuchsia-700">184 亿元</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs text-slate-600">资金来源总额</p>
-              <p className="mt-1 text-2xl font-bold text-slate-800">615 亿元</p>
-            </div>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-              <p className="text-xs text-slate-600">资金应用 - 资金备付</p>
-              <p className="mt-1 text-2xl font-bold text-emerald-700">106 亿元</p>
-            </div>
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
-              <p className="text-xs text-slate-600">资金应用 - 信贷业务</p>
-              <p className="mt-1 text-2xl font-bold text-blue-700">206 亿元</p>
-            </div>
-            <div className="rounded-xl border border-orange-200 bg-orange-50 p-3">
-              <p className="text-xs text-slate-600">资金应用总额</p>
-              <p className="mt-1 text-2xl font-bold text-orange-700">615 亿元</p>
-            </div>
-          </div>
+          <div className="grid gap-3 lg:grid-cols-12">
+            <div className="space-y-2 lg:col-span-4">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5">
+                <p className="text-[11px] text-slate-600">资金来源总和（第一层）</p>
+                <p className="text-xl font-bold text-emerald-700">{latestFund.sourceTotal} 亿元</p>
+                <p className="text-[11px] text-emerald-700">吸收存款 {latestFund.deposit} + 权益 {latestFund.equity} = {latestFund.sourceTotal}</p>
+              </div>
 
-          <div className="rounded-xl border border-slate-200 p-3">
-            <svg viewBox={`0 0 ${chartWidth + 60} ${chartHeight + 50}`} className="h-60 w-full">
-              <g transform="translate(30,10)">
-                <polygon
-                  fill="rgba(16,185,129,0.22)"
-                  points={`0,${chartHeight} ${buildStackedAreaPoints(fundStack.map((x) => x.reserveTop), chartWidth, chartHeight, maxTotal)} ${chartWidth},${chartHeight}`}
-                />
-                <polygon
-                  fill="rgba(59,130,246,0.22)"
-                  points={`0,${chartHeight} ${buildStackedAreaPoints(fundStack.map((x) => x.creditTop), chartWidth, chartHeight, maxTotal)} ${chartWidth},${chartHeight}`}
-                />
-                <polygon
-                  fill="rgba(234,88,12,0.22)"
-                  points={`0,${chartHeight} ${buildStackedAreaPoints(fundStack.map((x) => x.interbankTop), chartWidth, chartHeight, maxTotal)} ${chartWidth},${chartHeight}`}
-                />
-                <polygon
-                  fill="rgba(139,92,246,0.22)"
-                  points={`0,${chartHeight} ${buildStackedAreaPoints(fundStack.map((x) => x.investTop), chartWidth, chartHeight, maxTotal)} ${chartWidth},${chartHeight}`}
-                />
+              <div className="rounded-xl border border-sky-200 bg-sky-50 p-2.5">
+                <p className="text-[11px] text-slate-600">资金应用总和（第二层）</p>
+                <p className="text-xl font-bold text-sky-700">{Math.abs(latestFund.appTotal)} 亿元</p>
+                <p className="text-[11px] text-sky-700">
+                  备付 {Math.abs(latestFund.reserve)} / 信贷 {Math.abs(latestFund.credit)} / 同业 {Math.abs(latestFund.interbank)} / 投资 {Math.abs(latestFund.invest)}
+                </p>
+              </div>
 
-                <polyline fill="none" stroke="#e11d48" strokeWidth="3" points={buildStackedAreaPoints(fundStack.map((x) => x.deposit), chartWidth, chartHeight, maxTotal)} />
-                <polyline fill="none" stroke="#c026d3" strokeWidth="3" points={buildStackedAreaPoints(fundStack.map((x) => x.sourceTotal), chartWidth, chartHeight, maxTotal)} />
-                <polyline fill="none" stroke="#0ea5e9" strokeWidth="3" strokeDasharray="4 4" points={buildStackedAreaPoints(fundStack.map((x) => x.appTotal), chartWidth, chartHeight, maxTotal)} />
+              <div className={`rounded-xl border p-2.5 ${isBalanced ? "border-slate-200 bg-slate-50 text-slate-700" : "border-red-200 bg-red-50 text-red-700"}`}>
+                <p className="text-[11px]">平衡校验（逐期）</p>
+                <p className="text-[11px]">{isBalanced ? "资金来源总和 与 资金应用总和(绝对值) 全部匹配" : "存在不平衡期次，请检查数据"}</p>
+              </div>
+            </div>
 
-                {fundStack.map((item, idx) => (
-                  <text key={item.month} x={(idx / (fundStack.length - 1)) * chartWidth} y={chartHeight + 20} textAnchor="middle" className="fill-slate-500 text-[10px]">
-                    {item.month}
-                  </text>
-                ))}
-              </g>
-            </svg>
-            <div className="mt-1 flex flex-wrap justify-center gap-3 text-[11px] text-slate-600">
-              <span className="text-rose-600">— 资金来源：吸收存款</span>
-              <span className="text-fuchsia-600">— 资金来源：总额(吸收存款+权益)</span>
-              <span className="text-emerald-600">■ 资金备付</span>
-              <span className="text-blue-600">■ 信贷业务</span>
-              <span className="text-orange-600">■ 同业业务</span>
-              <span className="text-violet-600">■ 投资业务</span>
-              <span className="text-sky-500">-- 资金应用总额</span>
+            <div className="rounded-xl border border-slate-200 p-3 lg:col-span-8">
+              <svg viewBox={`0 0 ${chartWidth + 60} ${chartHeight + 60}`} className="h-64 w-full">
+                <g transform="translate(30,15)">
+                  <path
+                    fill="rgba(22,163,74,0.35)"
+                    d={buildAreaBandPath(
+                      fundStack.map(() => 0),
+                      fundStack.map((x) => x.sourceDepositTop),
+                      chartWidth,
+                      yPosition
+                    )}
+                  />
+                  <path
+                    fill="rgba(217,119,6,0.32)"
+                    d={buildAreaBandPath(
+                      fundStack.map((x) => x.sourceDepositTop),
+                      fundStack.map((x) => x.sourceEquityTop),
+                      chartWidth,
+                      yPosition
+                    )}
+                  />
+                  <path
+                    fill="rgba(14,116,144,0.35)"
+                    d={buildAreaBandPath(
+                      fundStack.map(() => 0),
+                      fundStack.map((x) => x.appReserveTop),
+                      chartWidth,
+                      yPosition
+                    )}
+                  />
+                  <path
+                    fill="rgba(37,99,235,0.33)"
+                    d={buildAreaBandPath(
+                      fundStack.map((x) => x.appReserveTop),
+                      fundStack.map((x) => x.appCreditTop),
+                      chartWidth,
+                      yPosition
+                    )}
+                  />
+                  <path
+                    fill="rgba(8,145,178,0.32)"
+                    d={buildAreaBandPath(
+                      fundStack.map((x) => x.appCreditTop),
+                      fundStack.map((x) => x.appInterbankTop),
+                      chartWidth,
+                      yPosition
+                    )}
+                  />
+                  <path
+                    fill="rgba(71,85,105,0.34)"
+                    d={buildAreaBandPath(
+                      fundStack.map((x) => x.appInterbankTop),
+                      fundStack.map((x) => x.appInvestTop),
+                      chartWidth,
+                      yPosition
+                    )}
+                  />
+
+                  <line x1={0} x2={chartWidth} y1={centerY} y2={centerY} stroke="#111827" strokeWidth="2.2" />
+                  <polyline fill="none" stroke="#166534" strokeWidth="2.4" points={buildPolylinePoints(fundStack.map((x) => x.sourceTotal), chartWidth, yPosition)} />
+                  <polyline fill="none" stroke="#1d4ed8" strokeWidth="2.4" points={buildPolylinePoints(fundStack.map((x) => x.appTotal), chartWidth, yPosition)} />
+
+                  {fundStack.map((item, idx) => (
+                    <text key={item.month} x={(idx / (fundStack.length - 1)) * chartWidth} y={chartHeight + 22} textAnchor="middle" className="fill-slate-500 text-[10px]">
+                      {item.month}
+                    </text>
+                  ))}
+                </g>
+              </svg>
+
+              <div className="mt-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] text-slate-600">
+                <span className="text-green-700">■ 吸收存款</span>
+                <span className="text-amber-700">■ 权益</span>
+                <span className="text-cyan-700">■ 资金备付</span>
+                <span className="text-blue-700">■ 信贷业务</span>
+                <span className="text-sky-700">■ 同业业务</span>
+                <span className="text-slate-700">■ 投资业务</span>
+                <span className="text-slate-900">━ 资金平衡线（Y=0）</span>
+              </div>
             </div>
           </div>
         </CardContent>
