@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 
 import {
   Activity,
@@ -55,8 +55,12 @@ const toneStyles = {
   rose: "border-rose-200 bg-rose-50 text-rose-700"
 } as const;
 
-const quoteTermFilters = ["隔夜", "1周", "2周", "1个月", "3个月", "6个月", "9个月", "1年"] as const;
-const quoteTypeFilters = ["定期", "存单[1M/3M/6M/9M/12M]"] as const;
+const quoteTypeFilters = ["定期", "存单"] as const;
+const quoteTermFiltersByType = {
+  定期: ["1年", "2年", "3年"],
+  存单: ["1个月", "3个月", "6个月", "9个月", "12个月"]
+} as const;
+type QuoteTerm = (typeof quoteTermFiltersByType)[keyof typeof quoteTermFiltersByType][number];
 
 function CardHead({ icon: Icon, title, subtitle }: { icon: ComponentType<{ className?: string }>; title: string; subtitle: string }) {
   return (
@@ -102,9 +106,14 @@ function buildAreaBandPath(
 }
 
 export function FundCockpitScreen() {
-  const [selectedTerm, setSelectedTerm] = useState<(typeof quoteTermFilters)[number]>("隔夜");
   const [selectedType, setSelectedType] = useState<(typeof quoteTypeFilters)[number]>("定期");
+  const [selectedTerm, setSelectedTerm] = useState<QuoteTerm>("1年");
   const [positionCompareMode, setPositionCompareMode] = useState<"mom" | "yoy">("mom");
+  const availableQuoteTerms = quoteTermFiltersByType[selectedType];
+
+  useEffect(() => {
+    setSelectedTerm(quoteTermFiltersByType[selectedType][0]);
+  }, [selectedType]);
 
   const fundStack = useMemo(() => {
     return fundSeries.map((d) => {
@@ -537,7 +546,7 @@ export function FundCockpitScreen() {
               <div>
                 <p className="mb-1 text-[11px] text-slate-500">期限筛选</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {quoteTermFilters.map((term) => (
+                  {availableQuoteTerms.map((term) => (
                     <button
                       key={term}
                       onClick={() => setSelectedTerm(term)}
