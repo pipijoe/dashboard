@@ -104,13 +104,13 @@ const cdRows: CdRow[] = [
 ];
 
 const ftpTrend = [
-  { date: "03-12", value: 1.42 },
-  { date: "03-13", value: 1.44 },
-  { date: "03-14", value: 1.41 },
-  { date: "03-15", value: 1.46 },
-  { date: "03-16", value: 1.5 },
-  { date: "03-17", value: 1.48 },
-  { date: "03-18", value: 1.51 }
+  { date: "03-12", depositFtp: 2.02, loanFtp: 2.58 },
+  { date: "03-13", depositFtp: 2.04, loanFtp: 2.61 },
+  { date: "03-14", depositFtp: 2.01, loanFtp: 2.57 },
+  { date: "03-15", depositFtp: 2.07, loanFtp: 2.66 },
+  { date: "03-16", depositFtp: 2.1, loanFtp: 2.7 },
+  { date: "03-17", depositFtp: 2.08, loanFtp: 2.68 },
+  { date: "03-18", depositFtp: 2.12, loanFtp: 2.72 }
 ];
 
 const marketAnalysis = [
@@ -137,17 +137,45 @@ function getMaxRate(row: QuoteRow) {
 }
 
 export function InterbankQuoteScreen() {
-  const maxFtp = Math.max(...ftpTrend.map((point) => point.value));
-  const minFtp = Math.min(...ftpTrend.map((point) => point.value));
-  const range = maxFtp - minFtp || 1;
-  const points = ftpTrend
+  const depositSpread = 2.0 - 1.5;
+  const loanSpread = 4.5 - 2.5;
+  const allRates = ftpTrend.flatMap((point) => [point.depositFtp, point.loanFtp]);
+  const rateMin = Math.min(...allRates);
+  const rateMax = Math.max(...allRates);
+  const chartPadding = 0.06;
+  const minFtp = Math.max(0, rateMin - chartPadding);
+  const maxFtp = rateMax + chartPadding;
+  const chartRange = maxFtp - minFtp || 1;
+  const yTicks = Array.from({ length: 5 }, (_, index) => maxFtp - (chartRange / 4) * index);
+
+  const getLinePoints = (key: "depositFtp" | "loanFtp") =>
+    ftpTrend
+      .map((point, index) => {
+        const x = (index / (ftpTrend.length - 1)) * 100;
+        const y = ((maxFtp - point[key]) / chartRange) * 100;
+
+        return `${x},${y}`;
+      })
+      .join(" ");
+
+  const depositPoints = getLinePoints("depositFtp");
+  const loanPoints = getLinePoints("loanFtp");
+
+  const latestFtp = ftpTrend[ftpTrend.length - 1];
+  const depositDelta = latestFtp.depositFtp - ftpTrend[0].depositFtp;
+  const loanDelta = latestFtp.loanFtp - ftpTrend[0].loanFtp;
+  const depositDeltaBp = depositDelta * 100;
+  const loanDeltaBp = loanDelta * 100;
+
+  const toY = (value: number) => ((maxFtp - value) / chartRange) * 100;
+
+  const xLabels = ftpTrend
     .map((point, index) => {
       const x = (index / (ftpTrend.length - 1)) * 100;
-      const y = ((maxFtp - point.value) / range) * 100;
 
-      return `${x},${y}`;
+      return { x, label: point.date };
     })
-    .join(" ");
+    .filter((_, index) => index === 0 || index === ftpTrend.length - 1 || index % 2 === 0);
 
   return (
     <section className="space-y-4">
@@ -282,21 +310,69 @@ export function InterbankQuoteScreen() {
             <CardTitle className="text-xl">FTP报价趋势图</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <div className="grid gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm md:grid-cols-2">
+              <div className="space-y-1 rounded bg-background p-3">
+                <p className="text-muted-foreground">存款FTP（资金成本价）</p>
+                <p className="text-2xl font-bold text-blue-700">{latestFtp.depositFtp.toFixed(2)}%</p>
+                <p className={depositDeltaBp >= 0 ? "text-red-600" : "text-green-600"}>
+                  较03-12 {depositDeltaBp >= 0 ? "+" : ""}
+                  {depositDeltaBp.toFixed(0)}bp
+                </p>
+                <p className="text-xs text-muted-foreground">示例中存款部门毛利：{depositSpread.toFixed(2)}%</p>
+              </div>
+              <div className="space-y-1 rounded bg-background p-3">
+                <p className="text-muted-foreground">贷款FTP（资金收益价）</p>
+                <p className="text-2xl font-bold text-amber-700">{latestFtp.loanFtp.toFixed(2)}%</p>
+                <p className={loanDeltaBp >= 0 ? "text-red-600" : "text-green-600"}>
+                  较03-12 {loanDeltaBp >= 0 ? "+" : ""}
+                  {loanDeltaBp.toFixed(0)}bp
+                </p>
+                <p className="text-xs text-muted-foreground">示例中贷款部门息差：{loanSpread.toFixed(2)}%</p>
+              </div>
+            </div>
             <div className="h-64 rounded-md border border-border bg-slate-50 p-3">
               <svg viewBox="0 0 100 100" className="h-full w-full">
-                <polyline fill="none" stroke="#2563eb" strokeWidth="2.2" points={points} />
+                {yTicks.map((tick) => {
+                  const y = toY(tick);
+
+                  return (
+                    <g key={tick}>
+                      <line x1={0} y1={y} x2={100} y2={y} stroke="#cbd5e1" strokeDasharray="2 2" strokeWidth="0.5" />
+                      <text x={1} y={Math.max(4, y - 1)} fontSize="3" fill="#64748b">
+                        {tick.toFixed(2)}%
+                      </text>
+                    </g>
+                  );
+                })}
+                <polyline fill="none" stroke="#1d4ed8" strokeWidth="2.2" points={depositPoints} />
+                <polyline fill="none" stroke="#b45309" strokeWidth="2.2" points={loanPoints} />
                 {ftpTrend.map((point, index) => {
                   const x = (index / (ftpTrend.length - 1)) * 100;
-                  const y = ((maxFtp - point.value) / range) * 100;
+                  const depositY = toY(point.depositFtp);
+                  const loanY = toY(point.loanFtp);
 
-                  return <circle key={point.date} cx={x} cy={y} r="1.8" fill="#1d4ed8" />;
+                  return (
+                    <g key={point.date}>
+                      <circle cx={x} cy={depositY} r="1.7" fill="#1d4ed8" />
+                      <circle cx={x} cy={loanY} r="1.7" fill="#b45309" />
+                    </g>
+                  );
                 })}
+                {xLabels.map((item) => (
+                  <text key={item.label} x={item.x} y={99} fontSize="3" fill="#64748b" textAnchor="middle">
+                    {item.label}
+                  </text>
+                ))}
               </svg>
+            </div>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <span className="rounded bg-blue-100 px-2 py-1 text-blue-700">● 存款FTP（资金成本）</span>
+              <span className="rounded bg-amber-100 px-2 py-1 text-amber-700">● 贷款FTP（资金收益）</span>
             </div>
             <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
               {ftpTrend.map((point) => (
                 <span key={point.date} className="rounded bg-muted px-2 py-1">
-                  {point.date}：{point.value.toFixed(2)}%
+                  {point.date}：存款 {point.depositFtp.toFixed(2)}% / 贷款 {point.loanFtp.toFixed(2)}%
                 </span>
               ))}
             </div>
