@@ -326,8 +326,8 @@ export function InterbankQuoteScreen() {
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
-        <Card className="border border-border">
+      <div className="grid gap-4 xl:grid-cols-12">
+        <Card className="border border-border xl:col-span-8">
           <CardHeader className="pb-2">
             <CardTitle className="text-xl">FTP报价趋势图</CardTitle>
           </CardHeader>
@@ -401,7 +401,7 @@ export function InterbankQuoteScreen() {
           </CardContent>
         </Card>
 
-        <Card className="border border-border">
+        <Card className="border border-border xl:col-span-4">
           <CardHeader className="pb-2">
             <CardTitle className="text-xl">货币市场分析</CardTitle>
           </CardHeader>
