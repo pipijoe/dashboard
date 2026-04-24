@@ -125,6 +125,18 @@ const marketAnalysis = [
   {
     title: "存单发行",
     summary: "本周存单发行放量，3M-6M供给较多；高评级发行利率小幅回落，低评级分层仍明显。"
+  },
+  {
+    title: "跨月流动性",
+    summary: "跨月备付需求提前释放，隔夜资金需求有抬升迹象；大行净融出规模整体可控，波动区间预计收窄。"
+  },
+  {
+    title: "期限利差",
+    summary: "1M-3M期限利差维持低位震荡，市场对后续资金中枢预期趋于一致，曲线斜率变化有限。"
+  },
+  {
+    title: "机构行为",
+    summary: "城商行与农商行继续偏好中短久期配置，国股行在关键时点加大报价深度，市场成交连续性改善。"
   }
 ];
 
@@ -148,19 +160,6 @@ export function InterbankQuoteScreen() {
   const chartRange = maxFtp - minFtp || 1;
   const yTicks = Array.from({ length: 5 }, (_, index) => maxFtp - (chartRange / 4) * index);
 
-  const getLinePoints = (key: "depositFtp" | "loanFtp") =>
-    ftpTrend
-      .map((point, index) => {
-        const x = (index / (ftpTrend.length - 1)) * 100;
-        const y = ((maxFtp - point[key]) / chartRange) * 100;
-
-        return `${x},${y}`;
-      })
-      .join(" ");
-
-  const depositPoints = getLinePoints("depositFtp");
-  const loanPoints = getLinePoints("loanFtp");
-
   const latestFtp = ftpTrend[ftpTrend.length - 1];
   const depositDelta = latestFtp.depositFtp - ftpTrend[0].depositFtp;
   const loanDelta = latestFtp.loanFtp - ftpTrend[0].loanFtp;
@@ -176,6 +175,29 @@ export function InterbankQuoteScreen() {
       return { x, label: point.date };
     })
     .filter((_, index) => index === 0 || index === ftpTrend.length - 1 || index % 2 === 0);
+  const getCurvePath = (key: "depositFtp" | "loanFtp") => {
+    const points = ftpTrend.map((point, index) => {
+      const x = (index / (ftpTrend.length - 1)) * 100;
+      const y = toY(point[key]);
+
+      return { x, y };
+    });
+    if (points.length === 0) {
+      return "";
+    }
+
+    let path = `M ${points[0].x} ${points[0].y}`;
+    for (let index = 1; index < points.length; index += 1) {
+      const previous = points[index - 1];
+      const current = points[index];
+      const controlX = (previous.x + current.x) / 2;
+      path += ` C ${controlX} ${previous.y}, ${controlX} ${current.y}, ${current.x} ${current.y}`;
+    }
+
+    return path;
+  };
+  const depositCurvePath = getCurvePath("depositFtp");
+  const loanCurvePath = getCurvePath("loanFtp");
 
   return (
     <section className="space-y-4">
@@ -304,12 +326,12 @@ export function InterbankQuoteScreen() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="space-y-4">
         <Card className="border border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-xl">FTP报价趋势图</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 px-2 pb-5 md:px-4">
             <div className="grid gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm md:grid-cols-2">
               <div className="space-y-1 rounded bg-background p-3">
                 <p className="text-muted-foreground">存款FTP（资金成本价）</p>
@@ -330,7 +352,7 @@ export function InterbankQuoteScreen() {
                 <p className="text-xs text-muted-foreground">示例中贷款部门息差：{loanSpread.toFixed(2)}%</p>
               </div>
             </div>
-            <div className="h-64 rounded-md border border-border bg-slate-50 p-3">
+            <div className="h-72 rounded-md border border-border bg-slate-50 px-2 py-3 md:px-4">
               <svg viewBox="0 0 100 100" className="h-full w-full">
                 {yTicks.map((tick) => {
                   const y = toY(tick);
@@ -344,8 +366,8 @@ export function InterbankQuoteScreen() {
                     </g>
                   );
                 })}
-                <polyline fill="none" stroke="#1d4ed8" strokeWidth="2.2" points={depositPoints} />
-                <polyline fill="none" stroke="#b45309" strokeWidth="2.2" points={loanPoints} />
+                <path d={depositCurvePath} fill="none" stroke="#1d4ed8" strokeWidth="2.2" strokeLinecap="round" />
+                <path d={loanCurvePath} fill="none" stroke="#b45309" strokeWidth="2.2" strokeLinecap="round" />
                 {ftpTrend.map((point, index) => {
                   const x = (index / (ftpTrend.length - 1)) * 100;
                   const depositY = toY(point.depositFtp);
