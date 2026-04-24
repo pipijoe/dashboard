@@ -38,7 +38,7 @@ export default function App() {
       <Route
         path="/screens/interbank-quote"
         element={
-          <ScreenShell title="同业报价" currentPath="/screens/interbank-quote">
+          <ScreenShell title="市场行情" currentPath="/screens/interbank-quote">
             <InterbankQuoteScreen />
           </ScreenShell>
         }
