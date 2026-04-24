@@ -5,6 +5,7 @@ import { AccountManagementScreen } from "@/screens/account-management-screen";
 import { BankRelationshipScreen } from "@/screens/bank-relationship-screen";
 import { FundCockpitScreen } from "@/screens/fund-cockpit-screen";
 import { FundConfigurationScreen } from "@/screens/fund-configuration-screen";
+import { InterbankQuoteScreen } from "@/screens/interbank-quote-screen";
 
 export default function App() {
   return (
@@ -31,6 +32,14 @@ export default function App() {
         element={
           <ScreenShell title="账户管理大屏" currentPath="/screens/account-management">
             <AccountManagementScreen />
+          </ScreenShell>
+        }
+      />
+      <Route
+        path="/screens/interbank-quote"
+        element={
+          <ScreenShell title="同业报价" currentPath="/screens/interbank-quote">
+            <InterbankQuoteScreen />
           </ScreenShell>
         }
       />
