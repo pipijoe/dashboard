@@ -286,6 +286,17 @@ function computeLabel(total: number) {
   return "观察银行";
 }
 
+function getHealthTone(score: number) {
+  if (score >= 85) {
+    return "text-emerald-700 bg-emerald-50 border-emerald-200";
+  }
+  if (score >= 70) {
+    return "text-amber-700 bg-amber-50 border-amber-200";
+  }
+
+  return "text-rose-700 bg-rose-50 border-rose-200";
+}
+
 type BusinessSectionProps = {
   title: string;
   icon: ReactNode;
@@ -299,16 +310,16 @@ function BusinessSection({ title, icon, summary, rankingData }: BusinessSectionP
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4 lg:grid-cols-[90px_1.6fr_1fr]">
-        <div className="flex items-start justify-center">
-          <div className="rounded-xl border border-border bg-muted/40 p-4 text-primary">{icon}</div>
+      <CardContent className="grid items-stretch gap-4 lg:grid-cols-[96px_minmax(0,1.6fr)_minmax(280px,1fr)]">
+        <div className="flex h-full items-start justify-center">
+          <div className="rounded-xl border border-border bg-muted/40 p-4 text-primary shadow-sm">{icon}</div>
         </div>
 
-        <div className="space-y-3">{summary}</div>
+        <div className="h-full space-y-3">{summary}</div>
 
-        <div className="rounded-lg border border-border p-3">
+        <div className="flex h-full flex-col rounded-lg border border-border p-3">
           <p className="mb-2 text-sm font-medium">前十成员单位业务金额排行</p>
-          <ul className="space-y-1 text-xs">
+          <ul className="space-y-1 overflow-auto text-xs">
             {rankingData.map((item, index) => (
               <li key={item.member} className="flex items-center justify-between rounded bg-muted/50 px-2 py-1.5">
                 <span>
@@ -375,6 +386,10 @@ export function BankRelationshipScreen() {
     { name: "loanUsed", value: selectedBank.creditLine.loanUsed, fill: "var(--color-loanUsed)" },
     { name: "guaranteeUsed", value: selectedBank.creditLine.guaranteeUsed, fill: "var(--color-guaranteeUsed)" },
   ];
+  const creditUsageRate = (selectedBank.creditLine.usedLine / selectedBank.creditLine.totalLine) * 100;
+  const quoteWinCount = selectedBank.quotes.filter((item) => item.bankRate <= item.marketBenchmark).length;
+  const quoteWinRate = (quoteWinCount / selectedBank.quotes.length) * 100;
+  const healthTone = getHealthTone(scoreTotal);
 
   return (
     <section className="space-y-4">
@@ -405,6 +420,9 @@ export function BankRelationshipScreen() {
               }`}
             >
               {selectedBank.riskBank ? "风险银行" : "正常银行"}
+            </span>
+            <span className={`rounded-md border px-2 py-1 text-xs font-medium ${healthTone}`}>
+              关系健康度：{computeLabel(scoreTotal)}
             </span>
           </div>
           <Link
@@ -447,7 +465,7 @@ export function BankRelationshipScreen() {
               </thead>
               <tbody>
                 {selectedBank.deposit.map((item) => (
-                  <tr key={item.type} className="border-b border-border/70">
+                  <tr key={item.type} className="border-b border-border/70 transition-colors hover:bg-muted/40">
                     <td className="px-2 py-2">{item.type}</td>
                     <td className="px-2 py-2 text-right">{formatMoney(item.averageBalance)}</td>
                     <td className="px-2 py-2 text-right">{formatMoney(item.endingBalance)}</td>
@@ -492,7 +510,7 @@ export function BankRelationshipScreen() {
               </thead>
               <tbody>
                 {selectedBank.creditBusiness.map((item) => (
-                  <tr key={item.product} className="border-b border-border/70">
+                  <tr key={item.product} className="border-b border-border/70 transition-colors hover:bg-muted/40">
                     <td className="px-2 py-2">{item.product}</td>
                     <td className="px-2 py-2 text-right">{formatMoney(item.balance)}</td>
                     <td className="px-2 py-2 text-right">{formatMoney(item.amount)}</td>
@@ -540,6 +558,7 @@ export function BankRelationshipScreen() {
               <p className="mt-1 text-xs text-muted-foreground">
                 构成：贷款余额 {formatMoney(selectedBank.creditLine.loanUsed)} + 保函占用额 {formatMoney(selectedBank.creditLine.guaranteeUsed)}
               </p>
+              <p className="mt-2 text-xs font-medium text-foreground">用信率：{creditUsageRate.toFixed(1)}%</p>
             </div>
           </>
         }
@@ -592,17 +611,34 @@ export function BankRelationshipScreen() {
               </tr>
             </thead>
             <tbody>
-              {filteredQuotes.map((item, index) => (
-                <tr key={`${item.product}-${item.tenor}-${index}`} className="border-b border-border/70">
-                  <td className="px-2 py-2">{item.product}</td>
-                  <td className="px-2 py-2 text-right">{item.tenor}</td>
-                  <td className="px-2 py-2 text-right">{item.bankRate.toFixed(2)}%</td>
-                  <td className="px-2 py-2 text-right">{item.marketBenchmark.toFixed(2)}%</td>
-                  <td className="px-2 py-2 text-right">
-                    {typeof item.feeRate === "number" ? `${item.feeRate.toFixed(2)}%` : "-"}
+              {filteredQuotes.length > 0 ? (
+                filteredQuotes.map((item, index) => (
+                  <tr
+                    key={`${item.product}-${item.tenor}-${index}`}
+                    className="border-b border-border/70 transition-colors hover:bg-muted/40"
+                  >
+                    <td className="px-2 py-2">{item.product}</td>
+                    <td className="px-2 py-2 text-right">{item.tenor}</td>
+                    <td
+                      className={`px-2 py-2 text-right font-medium ${
+                        item.bankRate <= item.marketBenchmark ? "text-emerald-600" : "text-rose-600"
+                      }`}
+                    >
+                      {item.bankRate.toFixed(2)}%
+                    </td>
+                    <td className="px-2 py-2 text-right">{item.marketBenchmark.toFixed(2)}%</td>
+                    <td className="px-2 py-2 text-right">
+                      {typeof item.feeRate === "number" ? `${item.feeRate.toFixed(2)}%` : "-"}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-2 py-6 text-center text-sm text-muted-foreground">
+                    当前筛选条件下暂无报价，请尝试切换产品或期限。
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </CardContent>
@@ -634,6 +670,18 @@ export function BankRelationshipScreen() {
               <p className="text-xs text-muted-foreground">当前银行基础业务得分</p>
               <p className="text-3xl font-semibold">{scoreTotal.toFixed(1)}</p>
               <p className="mt-1 text-xs text-muted-foreground">标签：{computeLabel(scoreTotal)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground">报价竞争力</p>
+                <p className="text-2xl font-semibold">{quoteWinRate.toFixed(0)}%</p>
+                <p className="text-xs text-muted-foreground">低于/等于市场基准笔数</p>
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground">授信利用率</p>
+                <p className="text-2xl font-semibold">{creditUsageRate.toFixed(0)}%</p>
+                <p className="text-xs text-muted-foreground">用信余额 / 授信总额</p>
+              </div>
             </div>
             <div className="rounded-lg border border-border p-3">
               <p className="mb-2 text-sm font-medium">合作银行排名（按基础业务得分）</p>
