@@ -1,15 +1,28 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
   PolarAngleAxis,
   PolarGrid,
   Radar,
   RadarChart,
-  ResponsiveContainer,
-  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
+import { Building2, ChartColumnIncreasing, HandCoins, Landmark, ShieldCheck } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import {
   Select,
   SelectContent,
@@ -40,6 +53,11 @@ type CreditLine = {
   guaranteeUsed: number;
 };
 
+type MemberRankingItem = {
+  member: string;
+  amount: number;
+};
+
 type QuoteItem = {
   product: "存款" | "同业存款" | "贷款";
   tenor: string;
@@ -49,9 +67,10 @@ type QuoteItem = {
 };
 
 type Score = {
-  risk: number;
-  service: number;
-  contribution: number;
+  businessCooperation: number;
+  businessCompetitiveness: number;
+  riskStatus: number;
+  globalNetwork: number;
 };
 
 type BankProfile = {
@@ -62,9 +81,34 @@ type BankProfile = {
   deposit: DepositStat[];
   creditBusiness: CreditBusiness[];
   creditLine: CreditLine;
+  rankings: {
+    deposit: MemberRankingItem[];
+    loan: MemberRankingItem[];
+    credit: MemberRankingItem[];
+  };
   quotes: QuoteItem[];
   score: Score;
 };
+
+const memberUnits = [
+  "华东分公司",
+  "华南分公司",
+  "华北分公司",
+  "西南分公司",
+  "西北分公司",
+  "华中分公司",
+  "东北分公司",
+  "国际业务中心",
+  "供应链事业部",
+  "工程总包事业部",
+];
+
+function buildRanking(baseAmount: number, step: number): MemberRankingItem[] {
+  return memberUnits.map((member, index) => ({
+    member,
+    amount: Number((baseAmount - index * step).toFixed(1)),
+  }));
+}
 
 const banks: BankProfile[] = [
   {
@@ -92,6 +136,11 @@ const banks: BankProfile[] = [
       loanUsed: 88,
       guaranteeUsed: 29.5,
     },
+    rankings: {
+      deposit: buildRanking(31.2, 1.5),
+      loan: buildRanking(27.6, 1.2),
+      credit: buildRanking(39.8, 1.8),
+    },
     quotes: [
       { product: "存款", tenor: "7D", bankRate: 1.65, marketBenchmark: 1.52 },
       { product: "存款", tenor: "1M", bankRate: 1.78, marketBenchmark: 1.62 },
@@ -99,7 +148,12 @@ const banks: BankProfile[] = [
       { product: "贷款", tenor: "1Y", bankRate: 3.05, marketBenchmark: 3.1, feeRate: 0.18 },
       { product: "贷款", tenor: "3Y", bankRate: 3.3, marketBenchmark: 3.45, feeRate: 0.2 },
     ],
-    score: { risk: 82, service: 86, contribution: 90 },
+    score: {
+      businessCooperation: 92,
+      businessCompetitiveness: 88,
+      riskStatus: 84,
+      globalNetwork: 90,
+    },
   },
   {
     name: "招商银行",
@@ -126,6 +180,11 @@ const banks: BankProfile[] = [
       loanUsed: 59.2,
       guaranteeUsed: 20.1,
     },
+    rankings: {
+      deposit: buildRanking(24.4, 1.1),
+      loan: buildRanking(19.2, 0.9),
+      credit: buildRanking(26.6, 1.2),
+    },
     quotes: [
       { product: "存款", tenor: "7D", bankRate: 1.62, marketBenchmark: 1.52 },
       { product: "同业存款", tenor: "1M", bankRate: 1.76, marketBenchmark: 1.62 },
@@ -133,7 +192,12 @@ const banks: BankProfile[] = [
       { product: "贷款", tenor: "1Y", bankRate: 3.15, marketBenchmark: 3.1, feeRate: 0.22 },
       { product: "贷款", tenor: "3Y", bankRate: 3.35, marketBenchmark: 3.45, feeRate: 0.25 },
     ],
-    score: { risk: 78, service: 89, contribution: 84 },
+    score: {
+      businessCooperation: 84,
+      businessCompetitiveness: 87,
+      riskStatus: 81,
+      globalNetwork: 78,
+    },
   },
   {
     name: "某区域城商行A",
@@ -160,6 +224,11 @@ const banks: BankProfile[] = [
       loanUsed: 20.8,
       guaranteeUsed: 6.8,
     },
+    rankings: {
+      deposit: buildRanking(9.8, 0.5),
+      loan: buildRanking(7.5, 0.36),
+      credit: buildRanking(11.4, 0.58),
+    },
     quotes: [
       { product: "存款", tenor: "7D", bankRate: 1.8, marketBenchmark: 1.52 },
       { product: "同业存款", tenor: "1M", bankRate: 1.98, marketBenchmark: 1.62 },
@@ -167,15 +236,40 @@ const banks: BankProfile[] = [
       { product: "贷款", tenor: "1Y", bankRate: 4.05, marketBenchmark: 3.1, feeRate: 0.4 },
       { product: "贷款", tenor: "3Y", bankRate: 4.4, marketBenchmark: 3.45, feeRate: 0.48 },
     ],
-    score: { risk: 55, service: 64, contribution: 52 },
+    score: {
+      businessCooperation: 58,
+      businessCompetitiveness: 62,
+      riskStatus: 54,
+      globalNetwork: 45,
+    },
   },
 ];
 
 const scoreWeights = {
-  risk: 0.3,
-  service: 0.2,
-  contribution: 0.5,
+  businessCooperation: 0.4,
+  businessCompetitiveness: 0.3,
+  riskStatus: 0.2,
+  globalNetwork: 0.1,
 };
+
+const depositChartConfig = {
+  averageBalance: { label: "日均余额", color: "var(--chart-1)" },
+  endingBalance: { label: "期末余额", color: "var(--chart-2)" },
+} satisfies ChartConfig;
+
+const loanChartConfig = {
+  balance: { label: "余额", color: "var(--chart-3)" },
+  amount: { label: "发生额", color: "var(--chart-4)" },
+} satisfies ChartConfig;
+
+const creditChartConfig = {
+  loanUsed: { label: "贷款占用", color: "var(--chart-1)" },
+  guaranteeUsed: { label: "保函占用", color: "var(--chart-5)" },
+} satisfies ChartConfig;
+
+const scoreChartConfig = {
+  value: { label: "评分", color: "var(--chart-2)" },
+} satisfies ChartConfig;
 
 function formatMoney(value: number) {
   return `${value.toFixed(1)} 亿元`;
@@ -192,18 +286,56 @@ function computeLabel(total: number) {
   return "观察银行";
 }
 
+type BusinessSectionProps = {
+  title: string;
+  icon: ReactNode;
+  summary: ReactNode;
+  rankingData: MemberRankingItem[];
+};
+
+function BusinessSection({ title, icon, summary, rankingData }: BusinessSectionProps) {
+  return (
+    <Card className="border border-border bg-card/95">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-4 lg:grid-cols-[90px_1.6fr_1fr]">
+        <div className="flex items-start justify-center">
+          <div className="rounded-xl border border-border bg-muted/40 p-4 text-primary">{icon}</div>
+        </div>
+
+        <div className="space-y-3">{summary}</div>
+
+        <div className="rounded-lg border border-border p-3">
+          <p className="mb-2 text-sm font-medium">前十成员单位业务金额排行</p>
+          <ul className="space-y-1 text-xs">
+            {rankingData.map((item, index) => (
+              <li key={item.member} className="flex items-center justify-between rounded bg-muted/50 px-2 py-1.5">
+                <span>
+                  {index + 1}. {item.member}
+                </span>
+                <span className="font-medium text-muted-foreground">{formatMoney(item.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function BankRelationshipScreen() {
   const [selectedBankName, setSelectedBankName] = useState(banks[0].name);
   const [productFilter, setProductFilter] = useState<QuoteItem["product"] | "全部">("全部");
   const [tenorFilter, setTenorFilter] = useState("全部");
 
-  const selectedBank =
-    banks.find((bank) => bank.name === selectedBankName) ?? banks[0];
+  const selectedBank = banks.find((bank) => bank.name === selectedBankName) ?? banks[0];
 
   const scoreTotal =
-    selectedBank.score.risk * scoreWeights.risk +
-    selectedBank.score.service * scoreWeights.service +
-    selectedBank.score.contribution * scoreWeights.contribution;
+    selectedBank.score.businessCooperation * scoreWeights.businessCooperation +
+    selectedBank.score.businessCompetitiveness * scoreWeights.businessCompetitiveness +
+    selectedBank.score.riskStatus * scoreWeights.riskStatus +
+    selectedBank.score.globalNetwork * scoreWeights.globalNetwork;
 
   const quoteTenors = useMemo(() => {
     return Array.from(new Set(selectedBank.quotes.map((item) => item.tenor)));
@@ -219,9 +351,10 @@ export function BankRelationshipScreen() {
   const rankedBanks = banks
     .map((bank) => {
       const total =
-        bank.score.risk * scoreWeights.risk +
-        bank.score.service * scoreWeights.service +
-        bank.score.contribution * scoreWeights.contribution;
+        bank.score.businessCooperation * scoreWeights.businessCooperation +
+        bank.score.businessCompetitiveness * scoreWeights.businessCompetitiveness +
+        bank.score.riskStatus * scoreWeights.riskStatus +
+        bank.score.globalNetwork * scoreWeights.globalNetwork;
 
       return {
         name: bank.name,
@@ -232,16 +365,22 @@ export function BankRelationshipScreen() {
     .sort((left, right) => right.total - left.total);
 
   const radarData = [
-    { dimension: "风险维度", value: selectedBank.score.risk },
-    { dimension: "服务能力", value: selectedBank.score.service },
-    { dimension: "综合贡献", value: selectedBank.score.contribution },
+    { dimension: "业务合作紧密度", value: selectedBank.score.businessCooperation },
+    { dimension: "业务竞争力", value: selectedBank.score.businessCompetitiveness },
+    { dimension: "综合风险状况", value: selectedBank.score.riskStatus },
+    { dimension: "全球网络布局", value: selectedBank.score.globalNetwork },
+  ];
+
+  const creditUsageData = [
+    { name: "loanUsed", value: selectedBank.creditLine.loanUsed, fill: "var(--color-loanUsed)" },
+    { name: "guaranteeUsed", value: selectedBank.creditLine.guaranteeUsed, fill: "var(--color-guaranteeUsed)" },
   ];
 
   return (
     <section className="space-y-4">
       <Card className="border border-border bg-card/95">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">1区｜银行选择与入口</CardTitle>
+          <CardTitle className="text-lg">银行选择与入口</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -262,9 +401,7 @@ export function BankRelationshipScreen() {
             </span>
             <span
               className={`rounded-md px-2 py-1 text-xs font-medium ${
-                selectedBank.riskBank
-                  ? "bg-red-100 text-red-700"
-                  : "bg-emerald-100 text-emerald-700"
+                selectedBank.riskBank ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
               }`}
             >
               {selectedBank.riskBank ? "风险银行" : "正常银行"}
@@ -279,12 +416,27 @@ export function BankRelationshipScreen() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card className="border border-border bg-card/95">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">2区左｜存款业务统计</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <BusinessSection
+        title="存款业务统计"
+        icon={<Landmark className="h-10 w-10" />}
+        rankingData={selectedBank.rankings.deposit}
+        summary={
+          <>
+            <div className="h-[240px] rounded-lg border border-border p-2">
+              <ChartContainer config={depositChartConfig} className="h-full w-full">
+                <BarChart data={selectedBank.deposit}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="type" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} width={36} />
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent formatter={(value) => `${value} 亿元`} />}
+                  />
+                  <Bar dataKey="averageBalance" fill="var(--color-averageBalance)" radius={4} />
+                  <Bar dataKey="endingBalance" fill="var(--color-endingBalance)" radius={4} />
+                </BarChart>
+              </ChartContainer>
+            </div>
             <table className="w-full text-sm">
               <thead className="bg-muted/70 text-muted-foreground">
                 <tr>
@@ -303,14 +455,31 @@ export function BankRelationshipScreen() {
                 ))}
               </tbody>
             </table>
-          </CardContent>
-        </Card>
+          </>
+        }
+      />
 
-        <Card className="border border-border bg-card/95">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">2区右｜贷款业务统计</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <BusinessSection
+        title="贷款业务统计"
+        icon={<HandCoins className="h-10 w-10" />}
+        rankingData={selectedBank.rankings.loan}
+        summary={
+          <>
+            <div className="h-[240px] rounded-lg border border-border p-2">
+              <ChartContainer config={loanChartConfig} className="h-full w-full">
+                <BarChart data={selectedBank.creditBusiness}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="product" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} width={36} />
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent formatter={(value) => `${value} 亿元`} />}
+                  />
+                  <Bar dataKey="balance" fill="var(--color-balance)" radius={4} />
+                  <Bar dataKey="amount" fill="var(--color-amount)" radius={4} />
+                </BarChart>
+              </ChartContainer>
+            </div>
             <table className="w-full text-sm">
               <thead className="bg-muted/70 text-muted-foreground">
                 <tr>
@@ -333,135 +502,141 @@ export function BankRelationshipScreen() {
                 ))}
               </tbody>
             </table>
-          </CardContent>
-        </Card>
-      </div>
+          </>
+        }
+      />
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card className="border border-border bg-card/95">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">3区左｜授信用信统计</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-border p-3">
-              <p className="text-xs text-muted-foreground">授信总额</p>
-              <p className="text-xl font-semibold">{formatMoney(selectedBank.creditLine.totalLine)}</p>
+      <BusinessSection
+        title="授信用信统计"
+        icon={<ShieldCheck className="h-10 w-10" />}
+        rankingData={selectedBank.rankings.credit}
+        summary={
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground">授信总额</p>
+                <p className="text-xl font-semibold">{formatMoney(selectedBank.creditLine.totalLine)}</p>
+              </div>
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground">剩余额度</p>
+                <p className="text-xl font-semibold">{formatMoney(selectedBank.creditLine.remainingLine)}</p>
+              </div>
+            </div>
+            <div className="h-[220px] rounded-lg border border-border p-2">
+              <ChartContainer config={creditChartConfig} className="h-full w-full">
+                <PieChart>
+                  <Pie data={creditUsageData} dataKey="value" nameKey="name" innerRadius={52} outerRadius={84}>
+                    {creditUsageData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent formatter={(value) => `${value} 亿元`} />} />
+                </PieChart>
+              </ChartContainer>
             </div>
             <div className="rounded-lg border border-border p-3">
-              <p className="text-xs text-muted-foreground">剩余额度</p>
-              <p className="text-xl font-semibold">{formatMoney(selectedBank.creditLine.remainingLine)}</p>
-            </div>
-            <div className="rounded-lg border border-border p-3 sm:col-span-2">
-              <p className="text-xs text-muted-foreground">
-                用信余额（当前已使用授信金额）
-              </p>
+              <p className="text-xs text-muted-foreground">用信余额（当前已使用授信金额）</p>
               <p className="text-xl font-semibold">{formatMoney(selectedBank.creditLine.usedLine)}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                构成：贷款余额 {formatMoney(selectedBank.creditLine.loanUsed)} + 保函占用额{" "}
-                {formatMoney(selectedBank.creditLine.guaranteeUsed)}
+                构成：贷款余额 {formatMoney(selectedBank.creditLine.loanUsed)} + 保函占用额 {formatMoney(selectedBank.creditLine.guaranteeUsed)}
               </p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border bg-card/95">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">3区右｜银行业务报价（可按产品/期限对比）</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-wrap gap-3">
-              <Select
-                value={productFilter}
-                onValueChange={(value) => setProductFilter(value as QuoteItem["product"] | "全部")}
-              >
-                <SelectTrigger className="w-36 bg-white">
-                  <SelectValue placeholder="产品类型" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="全部">全部产品</SelectItem>
-                  <SelectItem value="存款">存款</SelectItem>
-                  <SelectItem value="同业存款">同业存款</SelectItem>
-                  <SelectItem value="贷款">贷款</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={tenorFilter} onValueChange={setTenorFilter}>
-                <SelectTrigger className="w-32 bg-white">
-                  <SelectValue placeholder="期限" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="全部">全部期限</SelectItem>
-                  {quoteTenors.map((tenor) => (
-                    <SelectItem key={tenor} value={tenor}>
-                      {tenor}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <table className="w-full text-sm">
-              <thead className="bg-muted/70 text-muted-foreground">
-                <tr>
-                  <th className="px-2 py-2 text-left">产品</th>
-                  <th className="px-2 py-2 text-right">期限</th>
-                  <th className="px-2 py-2 text-right">银行报价</th>
-                  <th className="px-2 py-2 text-right">市场基准</th>
-                  <th className="px-2 py-2 text-right">费率</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredQuotes.map((item, index) => (
-                  <tr key={`${item.product}-${item.tenor}-${index}`} className="border-b border-border/70">
-                    <td className="px-2 py-2">{item.product}</td>
-                    <td className="px-2 py-2 text-right">{item.tenor}</td>
-                    <td className="px-2 py-2 text-right">{item.bankRate.toFixed(2)}%</td>
-                    <td className="px-2 py-2 text-right">{item.marketBenchmark.toFixed(2)}%</td>
-                    <td className="px-2 py-2 text-right">
-                      {typeof item.feeRate === "number" ? `${item.feeRate.toFixed(2)}%` : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      </div>
+          </>
+        }
+      />
 
       <Card className="border border-border bg-card/95">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">4区｜银行画像与评分体系</CardTitle>
+          <CardTitle className="text-lg">银行同业报价（可按产品/期限对比）</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-3">
+            <Select
+              value={productFilter}
+              onValueChange={(value) => setProductFilter(value as QuoteItem["product"] | "全部")}
+            >
+              <SelectTrigger className="w-36 bg-white">
+                <SelectValue placeholder="产品类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="全部">全部产品</SelectItem>
+                <SelectItem value="存款">存款</SelectItem>
+                <SelectItem value="同业存款">同业存款</SelectItem>
+                <SelectItem value="贷款">贷款</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={tenorFilter} onValueChange={setTenorFilter}>
+              <SelectTrigger className="w-32 bg-white">
+                <SelectValue placeholder="期限" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="全部">全部期限</SelectItem>
+                {quoteTenors.map((tenor) => (
+                  <SelectItem key={tenor} value={tenor}>
+                    {tenor}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <table className="w-full text-sm">
+            <thead className="bg-muted/70 text-muted-foreground">
+              <tr>
+                <th className="px-2 py-2 text-left">产品</th>
+                <th className="px-2 py-2 text-right">期限</th>
+                <th className="px-2 py-2 text-right">银行报价</th>
+                <th className="px-2 py-2 text-right">市场基准</th>
+                <th className="px-2 py-2 text-right">费率</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredQuotes.map((item, index) => (
+                <tr key={`${item.product}-${item.tenor}-${index}`} className="border-b border-border/70">
+                  <td className="px-2 py-2">{item.product}</td>
+                  <td className="px-2 py-2 text-right">{item.tenor}</td>
+                  <td className="px-2 py-2 text-right">{item.bankRate.toFixed(2)}%</td>
+                  <td className="px-2 py-2 text-right">{item.marketBenchmark.toFixed(2)}%</td>
+                  <td className="px-2 py-2 text-right">
+                    {typeof item.feeRate === "number" ? `${item.feeRate.toFixed(2)}%` : "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border bg-card/95">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">银行画像与评分体系</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
           <div className="grid gap-3">
             <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
-              评分公式：总分 = 风险维度 × 30% + 服务能力 × 20% + 综合贡献 × 50%
+              基础业务得分 = 业务合作紧密度 × 40% + 业务竞争力 × 30% + 综合风险状况 × 20% + 全球网络布局 × 10%
             </div>
             <div className="h-[300px] rounded-lg border border-border p-2">
-              <ResponsiveContainer width="100%" height="100%">
+              <ChartContainer config={scoreChartConfig} className="h-full w-full">
                 <RadarChart data={radarData}>
                   <PolarGrid />
                   <PolarAngleAxis dataKey="dimension" tick={{ fill: "#334155", fontSize: 12 }} />
-                  <Radar
-                    dataKey="value"
-                    stroke="#ef4444"
-                    fill="#f87171"
-                    fillOpacity={0.35}
-                  />
-                  <Tooltip formatter={(value) => `${value} 分`} />
+                  <Radar dataKey="value" stroke="var(--color-value)" fill="var(--color-value)" fillOpacity={0.35} />
+                  <ChartTooltip formatter={(value) => `${value} 分`} />
                 </RadarChart>
-              </ResponsiveContainer>
+              </ChartContainer>
             </div>
           </div>
 
           <div className="space-y-3">
             <div className="rounded-lg border border-border p-3">
-              <p className="text-xs text-muted-foreground">当前银行总分</p>
+              <p className="text-xs text-muted-foreground">当前银行基础业务得分</p>
               <p className="text-3xl font-semibold">{scoreTotal.toFixed(1)}</p>
               <p className="mt-1 text-xs text-muted-foreground">标签：{computeLabel(scoreTotal)}</p>
             </div>
             <div className="rounded-lg border border-border p-3">
-              <p className="mb-2 text-sm font-medium">合作银行排名（按总分）</p>
+              <p className="mb-2 text-sm font-medium">合作银行排名（按基础业务得分）</p>
               <ul className="space-y-2 text-sm">
                 {rankedBanks.map((item, index) => (
                   <li key={item.name} className="flex items-center justify-between rounded bg-muted/50 px-2 py-1.5">
@@ -474,6 +649,20 @@ export function BankRelationshipScreen() {
                   </li>
                 ))}
               </ul>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+              <div className="mb-2 flex items-center gap-2 text-foreground">
+                <ChartColumnIncreasing className="h-4 w-4" />
+                评分维度说明
+              </div>
+              <p>业务合作紧密度：银企业务协同深度与合作频次。</p>
+              <p>业务竞争力：产品报价、效率与综合服务能力。</p>
+              <p>综合风险状况：授信稳定性、运营及合规风险水平。</p>
+              <p>全球网络布局：境内外机构覆盖与跨境服务能力。</p>
+              <div className="mt-2 flex items-center gap-2 text-foreground">
+                <Building2 className="h-4 w-4" />
+                分值区间：90-100 领先，70-89 稳健，70以下 观察。
+              </div>
             </div>
           </div>
         </CardContent>
