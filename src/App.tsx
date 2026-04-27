@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { ScreenShell } from "@/components/screen-shell";
 import { AccountManagementScreen } from "@/screens/account-management-screen";
+import { BankDirectoryScreen } from "@/screens/bank-directory-screen";
 import { BankRelationshipScreen } from "@/screens/bank-relationship-screen";
 import { FundCockpitScreen } from "@/screens/fund-cockpit-screen";
 import { FundConfigurationScreen } from "@/screens/fund-configuration-screen";
@@ -16,6 +17,14 @@ export default function App() {
         element={
           <ScreenShell title="银行关系大屏" currentPath="/screens/bank-relationship">
             <BankRelationshipScreen />
+          </ScreenShell>
+        }
+      />
+      <Route
+        path="/screens/bank-directory"
+        element={
+          <ScreenShell title="合作银行名录" currentPath="/screens/bank-relationship">
+            <BankDirectoryScreen />
           </ScreenShell>
         }
       />
