@@ -449,36 +449,24 @@ export function InterbankQuoteScreen() {
 
   return (
     <section className="space-y-4">
-      <Card className="overflow-hidden border border-border">
-        <CardHeader className="py-5 text-center ">
-          <CardTitle className="text-4xl font-extrabold tracking-wider">
-            {asOfDate}
-          </CardTitle>
+      <Card className="border border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">银行同业报价</CardTitle>
+          <p className="text-sm text-muted-foreground">{asOfDate} · 同业存款</p>
         </CardHeader>
-        <div className="bg-orange-500 py-2 text-center text-4xl font-bold text-white">
-          银行同业报价
-        </div>
-        <CardContent className="bg-[rgb(239,239,239)] p-0">
-          <div className="border-b border-border bg-[#e7d8cc] py-2 text-center text-2xl font-semibold">
-            同业存款
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-center text-[26px] leading-tight">
+        <CardContent className="space-y-3 px-2 pb-5 md:px-4">
+          <div className="overflow-x-auto rounded-md border border-border bg-muted/40 p-3">
+            <table className="min-w-full border-collapse text-center text-sm leading-tight">
               <thead>
-                <tr className="bg-[#c9c9c9]">
-                  <th className="border border-[#9c9c9c] px-3 py-2">
-                    存款期限
-                  </th>
-                  <th className="border border-[#9c9c9c] px-3 py-2">Shibor</th>
-                  <th className="border border-[#9c9c9c] bg-[#f6c000] px-3 py-2">
+                <tr className="bg-muted/60">
+                  <th className="border border-border px-3 py-2">存款期限</th>
+                  <th className="border border-border px-3 py-2">Shibor</th>
+                  <th className="border border-border bg-background px-3 py-2 text-amber-700">
                     当日最高
                   </th>
-                  <th className="border border-[#9c9c9c] px-3 py-2">较上日</th>
+                  <th className="border border-border px-3 py-2">较上日</th>
                   {institutions.map((name) => (
-                    <th
-                      key={name}
-                      className="border border-[#9c9c9c] px-3 py-2"
-                    >
+                    <th key={name} className="border border-border px-3 py-2">
                       {name}
                     </th>
                   ))}
@@ -491,18 +479,18 @@ export function InterbankQuoteScreen() {
                   return (
                     <tr
                       key={row.term}
-                      className="odd:bg-[#ececec] even:bg-[#e5e5e5]"
+                      className="odd:bg-background even:bg-muted/30"
                     >
-                      <td className="border border-[#9c9c9c] px-3 py-1 font-semibold">
+                      <td className="border border-border px-3 py-1 font-semibold">
                         {row.term}
                       </td>
-                      <td className="border border-[#9c9c9c] px-3 py-1 font-semibold text-[#1f4e79]">
+                      <td className="border border-border px-3 py-1 font-semibold text-[#1f4e79]">
                         {row.shibor ? formatRate(row.shibor) : "-"}
                       </td>
-                      <td className="border border-[#9c9c9c] bg-[#f6c000] px-3 py-1 font-bold">
+                      <td className="border border-border bg-background px-3 py-1 font-bold text-amber-700">
                         {formatRate(maxRate)}
                       </td>
-                      <td className="border border-[#9c9c9c] px-3 py-1 font-semibold text-[#665200]">
+                      <td className="border border-border px-3 py-1 font-semibold text-[#665200]">
                         {formatRate(row.previousHigh)}
                       </td>
                       {institutions.map((name) => {
@@ -512,7 +500,7 @@ export function InterbankQuoteScreen() {
                         return (
                           <td
                             key={`${row.term}-${name}`}
-                            className={`border border-[#9c9c9c] px-3 py-1 font-semibold ${
+                            className={`border border-border px-3 py-1 font-semibold ${
                               isMax
                                 ? "bg-red-100 text-red-700"
                                 : "text-foreground"
@@ -531,68 +519,68 @@ export function InterbankQuoteScreen() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border border-border">
-        <CardContent className="bg-[#efefef] p-0">
-          <div className="border-b border-border bg-[#e7d8cc] py-2 text-center text-2xl font-semibold">
-            同业存单
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-center text-[22px] leading-tight">
+      <Card className="border border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">同业存单</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 px-2 pb-5 md:px-4">
+          <div className="overflow-x-auto rounded-md border border-border bg-muted/40 p-3">
+            <table className="min-w-full border-collapse text-center text-sm leading-tight">
               <thead>
-                <tr className="bg-[#d1d1d1]">
-                  <th rowSpan={2} className="border border-[#9c9c9c] px-3 py-2">
+                <tr className="bg-muted/60">
+                  <th rowSpan={2} className="border border-border px-3 py-2">
                     存款期限
                   </th>
                   <th
                     colSpan={2}
-                    className="border border-[#9c9c9c] bg-[#f6c000] px-3 py-2"
+                    className="border border-border bg-background px-3 py-2 text-amber-700"
                   >
                     国有及国股行
                   </th>
-                  <th colSpan={2} className="border border-[#9c9c9c] px-3 py-2">
+                  <th colSpan={2} className="border border-border px-3 py-2">
                     六大国有
                   </th>
-                  <th colSpan={2} className="border border-[#9c9c9c] px-3 py-2">
+                  <th colSpan={2} className="border border-border px-3 py-2">
                     全国股份制
                   </th>
-                  <th colSpan={2} className="border border-[#9c9c9c] px-3 py-2">
+                  <th colSpan={2} className="border border-border px-3 py-2">
                     其他AAA
                   </th>
-                  <th colSpan={2} className="border border-[#9c9c9c] px-3 py-2">
+                  <th colSpan={2} className="border border-border px-3 py-2">
                     AA+
                   </th>
                 </tr>
-                <tr className="bg-[#dddddd] text-[18px]">
-                  <th className="border border-[#9c9c9c] bg-[#f6c000] px-3 py-2">
+                <tr className="bg-muted/40 text-xs">
+                  <th className="border border-border bg-background px-3 py-2 text-amber-700">
                     当日最高
                   </th>
-                  <th className="border border-[#9c9c9c] bg-[#f4e2a3] px-3 py-2">
+                  <th className="border border-border bg-background px-3 py-2 text-amber-700">
                     较上日涨跌
                   </th>
-                  <th className="border border-[#9c9c9c] px-3 py-2">报价</th>
-                  <th className="border border-[#9c9c9c] px-3 py-2">报价行</th>
-                  <th className="border border-[#9c9c9c] px-3 py-2">报价</th>
-                  <th className="border border-[#9c9c9c] px-3 py-2">报价行</th>
-                  <th className="border border-[#9c9c9c] px-3 py-2">报价</th>
-                  <th className="border border-[#9c9c9c] px-3 py-2">报价行</th>
-                  <th className="border border-[#9c9c9c] px-3 py-2">报价</th>
-                  <th className="border border-[#9c9c9c] px-3 py-2">报价行</th>
+                  <th className="border border-border px-3 py-2">报价</th>
+                  <th className="border border-border px-3 py-2">报价行</th>
+                  <th className="border border-border px-3 py-2">报价</th>
+                  <th className="border border-border px-3 py-2">报价行</th>
+                  <th className="border border-border px-3 py-2">报价</th>
+                  <th className="border border-border px-3 py-2">报价行</th>
+                  <th className="border border-border px-3 py-2">报价</th>
+                  <th className="border border-border px-3 py-2">报价行</th>
                 </tr>
               </thead>
               <tbody>
                 {cdRows.map((row) => (
                   <tr
                     key={row.term}
-                    className="odd:bg-[#ececec] even:bg-[#e5e5e5]"
+                    className="odd:bg-background even:bg-muted/30"
                   >
-                    <td className="border border-[#9c9c9c] px-3 py-1 font-semibold">
+                    <td className="border border-border px-3 py-1 font-semibold">
                       {row.term}
                     </td>
-                    <td className="border border-[#9c9c9c] bg-[#f6c000] px-3 py-1 font-bold">
+                    <td className="border border-border bg-background px-3 py-1 font-bold text-amber-700">
                       {formatRate(row.stateOwnedPeak)}
                     </td>
                     <td
-                      className={`border border-[#9c9c9c] px-3 py-1 font-semibold ${
+                      className={`border border-border px-3 py-1 font-semibold ${
                         row.dayChange < 0
                           ? "text-green-600"
                           : row.dayChange > 0
@@ -604,28 +592,28 @@ export function InterbankQuoteScreen() {
                         ? `+${row.dayChange.toFixed(2)}`
                         : row.dayChange.toFixed(2)}
                     </td>
-                    <td className="border border-[#9c9c9c] px-3 py-1 font-semibold">
+                    <td className="border border-border px-3 py-1 font-semibold">
                       {formatRate(row.bigSixRate)}
                     </td>
-                    <td className="border border-[#9c9c9c] px-3 py-1">
+                    <td className="border border-border px-3 py-1">
                       {row.bigSixBank}
                     </td>
-                    <td className="border border-[#9c9c9c] px-3 py-1 font-semibold">
+                    <td className="border border-border px-3 py-1 font-semibold">
                       {formatRate(row.nationalStockRate)}
                     </td>
-                    <td className="border border-[#9c9c9c] px-3 py-1">
+                    <td className="border border-border px-3 py-1">
                       {row.nationalStockBank}
                     </td>
-                    <td className="border border-[#9c9c9c] px-3 py-1 font-semibold">
+                    <td className="border border-border px-3 py-1 font-semibold">
                       {formatRate(row.otherAaaRate)}
                     </td>
-                    <td className="border border-[#9c9c9c] px-3 py-1">
+                    <td className="border border-border px-3 py-1">
                       {row.otherAaaBank}
                     </td>
-                    <td className="border border-[#9c9c9c] px-3 py-1 font-semibold">
+                    <td className="border border-border px-3 py-1 font-semibold">
                       {formatRate(row.aaPlusRate)}
                     </td>
-                    <td className="border border-[#9c9c9c] px-3 py-1">
+                    <td className="border border-border px-3 py-1">
                       {row.aaPlusBank}
                     </td>
                   </tr>
@@ -704,38 +692,40 @@ export function InterbankQuoteScreen() {
         </Card>
       </div>
 
-      <Card className="overflow-hidden border border-border">
-        <CardHeader className="border-b border-border bg-slate-900 text-white">
+      <Card className="border border-border">
+        <CardHeader className="pb-2">
           <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
-              <CardTitle className="text-2xl">市场利率走势图</CardTitle>
-              <p className="mt-1 text-sm text-slate-300">
+              <CardTitle className="text-xl">市场利率走势图</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
                 SHIBOR走势与LPR报价叠加对比，跟踪资金面与贷款定价基准利差变化
               </p>
             </div>
-            <div className="rounded-full bg-white/10 px-4 py-1 text-sm text-slate-200">
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-1 text-sm text-muted-foreground">
               数据区间：02-18 至 03-18
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-5 bg-slate-50 p-4 md:p-5">
-          <div className="grid gap-3 md:grid-cols-4">
-            <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
+        <CardContent className="space-y-3 px-2 pb-5 md:px-4">
+          <div className="grid gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm md:grid-cols-4">
+            <div className="space-y-1 rounded bg-background p-3">
               <p className="text-sm text-muted-foreground">1M SHIBOR</p>
               <p className="mt-2 text-3xl font-bold text-blue-700">
                 {latestMarketRate.shibor1m.toFixed(2)}%
               </p>
               <p className="mt-1 text-xs text-green-600">较上期下行2bp</p>
             </div>
-            <div className="rounded-xl border border-violet-100 bg-white p-4 shadow-sm">
+            <div className="space-y-1 rounded bg-background p-3">
               <p className="text-sm text-muted-foreground">3M SHIBOR</p>
               <p className="mt-2 text-3xl font-bold text-violet-700">
                 {latestMarketRate.shibor3m.toFixed(2)}%
               </p>
               <p className="mt-1 text-xs text-green-600">较月初下行9bp</p>
             </div>
-            <div className="rounded-xl border border-orange-100 bg-white p-4 shadow-sm">
-              <p className="text-sm text-muted-foreground">1年期LPR-1M SHIBOR</p>
+            <div className="space-y-1 rounded bg-background p-3">
+              <p className="text-sm text-muted-foreground">
+                1年期LPR-1M SHIBOR
+              </p>
               <p className="mt-2 text-3xl font-bold text-orange-600">
                 {(oneYearSpread * 100).toFixed(0)}bp
               </p>
@@ -750,20 +740,26 @@ export function InterbankQuoteScreen() {
                 {Math.abs(spreadChange * 100).toFixed(0)}bp
               </p>
             </div>
-            <div className="rounded-xl border border-red-100 bg-white p-4 shadow-sm">
-              <p className="text-sm text-muted-foreground">5年期LPR-3M SHIBOR</p>
+            <div className="space-y-1 rounded bg-background p-3">
+              <p className="text-sm text-muted-foreground">
+                5年期LPR-3M SHIBOR
+              </p>
               <p className="mt-2 text-3xl font-bold text-red-600">
                 {(fiveYearSpread * 100).toFixed(0)}bp
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">中长期报价利差保持高位</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                中长期报价利差保持高位
+              </p>
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-12">
-            <div className="rounded-xl border border-border bg-white p-4 shadow-sm xl:col-span-8">
+          <div className="rounded-md border border-border bg-muted/40 p-3">
+            <div className="rounded bg-background p-4">
               <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold">SHIBOR期限结构与LPR叠加走势</h3>
+                  <h3 className="text-lg font-semibold">
+                    SHIBOR期限结构与LPR叠加走势
+                  </h3>
                   <p className="text-sm text-muted-foreground">
                     不同期限SHIBOR反映短端资金成本，LPR曲线用于观察贷款基准定价锚的相对稳定性。
                   </p>
@@ -772,7 +768,7 @@ export function InterbankQuoteScreen() {
                   {marketRateSeries.map((series) => (
                     <span
                       key={series.key}
-                      className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"
+                      className="inline-flex items-center gap-1 rounded bg-muted/40 px-2 py-1"
                     >
                       <span
                         className="h-2 w-2 rounded-full"
@@ -784,7 +780,7 @@ export function InterbankQuoteScreen() {
                 </div>
               </div>
 
-              <div className="relative h-[360px] rounded-lg bg-gradient-to-b from-white to-slate-50 p-3">
+              <div className="relative h-[360px] rounded bg-muted/20 p-3">
                 <svg
                   viewBox="0 0 760 320"
                   className="h-full w-full overflow-visible"
@@ -868,28 +864,6 @@ export function InterbankQuoteScreen() {
                   })}
                 </svg>
               </div>
-            </div>
-
-            <div className="space-y-3 xl:col-span-4">
-              <article className="rounded-xl border border-border bg-white p-4 shadow-sm">
-                <h3 className="mb-2 text-lg font-semibold">SHIBOR走势观察</h3>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  隔夜与7D品种围绕1.4%-1.6%区间震荡，1M、3M期限缓慢下行，显示跨月后资金预期趋稳，期限结构斜率收敛。
-                </p>
-              </article>
-              <article className="rounded-xl border border-border bg-white p-4 shadow-sm">
-                <h3 className="mb-2 text-lg font-semibold">LPR叠加对比分析</h3>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  LPR报价保持稳定，而中短端SHIBOR小幅回落，1年期LPR与1M SHIBOR利差扩大至
-                  {(oneYearSpread * 100).toFixed(0)}bp，可作为贷款重定价与内部FTP调整的监测信号。
-                </p>
-              </article>
-              <article className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <h3 className="mb-2 text-lg font-semibold text-amber-900">利差监测提示</h3>
-                <p className="text-sm leading-6 text-amber-800">
-                  若后续SHIBOR继续下行而LPR维持不变，贷款端基准利差将被动扩大；建议同步关注存单报价、公开市场操作与贷款投放节奏。
-                </p>
-              </article>
             </div>
           </div>
         </CardContent>
