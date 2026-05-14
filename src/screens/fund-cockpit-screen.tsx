@@ -28,12 +28,12 @@ const liquidityTicks = ["11/01", "11/05", "11/10", "11/15", "11/20", "11/25"];
 const barData = [82, 15, 28, 12, 55, 67, 72, 85];
 
 const fundSeries = [
-  { month: "6月", deposit: 398, equity: 168, reserve: 96, credit: 185, interbank: 118, invest: 167 },
-  { month: "7月", deposit: 405, equity: 171, reserve: 98, credit: 191, interbank: 121, invest: 166 },
-  { month: "8月", deposit: 412, equity: 173, reserve: 101, credit: 194, interbank: 124, invest: 166 },
-  { month: "9月", deposit: 416, equity: 177, reserve: 102, credit: 197, interbank: 126, invest: 168 },
-  { month: "10月", deposit: 423, equity: 181, reserve: 104, credit: 202, interbank: 129, invest: 169 },
-  { month: "11月", deposit: 431, equity: 184, reserve: 106, credit: 206, interbank: 132, invest: 171 }
+  { date: "06/30", deposit: 398, equity: 168, financing: 72, reserve: 96, credit: 185, interbank: 118, invest: 167 },
+  { date: "07/31", deposit: 405, equity: 171, financing: 74, reserve: 98, credit: 191, interbank: 121, invest: 166 },
+  { date: "08/31", deposit: 412, equity: 173, financing: 78, reserve: 101, credit: 194, interbank: 124, invest: 166 },
+  { date: "09/30", deposit: 416, equity: 177, financing: 76, reserve: 102, credit: 197, interbank: 126, invest: 168 },
+  { date: "10/31", deposit: 423, equity: 181, financing: 80, reserve: 104, credit: 202, interbank: 129, invest: 169 },
+  { date: "11/30", deposit: 431, equity: 184, financing: 82, reserve: 106, credit: 206, interbank: 132, invest: 171 }
 ] as const;
 
 const quoteTicks = ["7/1", "7/2", "7/3", "8/1", "8/2", "8/3", "9/1", "9/2", "9/3", "10/1", "10/2", "10/3"];
@@ -94,15 +94,15 @@ export function FundCockpitScreen() {
   const fundStack = useMemo(() => {
     return fundSeries.map((d) => ({
       ...d,
-      sourceTotal: d.deposit + d.equity,
+      sourceTotal: d.deposit + d.equity + d.financing,
       appTotal: d.reserve + d.credit + d.interbank + d.invest
     }));
   }, []);
 
   const latestFund = fundStack[fundStack.length - 1];
-  const [highlightedRiver, setHighlightedRiver] = useState<string | null>(null);
-  const [hoveredRiverPoint, setHoveredRiverPoint] = useState<{
-    month: string;
+  const [highlightedFundItem, setHighlightedFundItem] = useState<string | null>(null);
+  const [hoveredFundPoint, setHoveredFundPoint] = useState<{
+    date: string;
     label: string;
     value: number;
     x: number;
@@ -111,7 +111,8 @@ export function FundCockpitScreen() {
   const [hoveredTermBar, setHoveredTermBar] = useState<{ value: number; index: number } | null>(null);
   const sourceDetails = [
     { label: "吸收存款", value: latestFund.deposit, color: "text-emerald-700" },
-    { label: "权益资金", value: latestFund.equity, color: "text-amber-700" }
+    { label: "权益资金", value: latestFund.equity, color: "text-amber-700" },
+    { label: "融入资金", value: latestFund.financing, color: "text-fuchsia-700" }
   ] as const;
   const appDetails = [
     { label: "资金备付", value: latestFund.reserve, color: "text-cyan-700" },
@@ -120,11 +121,19 @@ export function FundCockpitScreen() {
     { label: "投资业务", value: latestFund.invest, color: "text-slate-700" }
   ] as const;
 
-  const riverSeries = useMemo(
+  const sourceLineSeries = useMemo(
     () =>
       [
         { key: "deposit", label: "吸收存款", color: "#16a34a" },
         { key: "equity", label: "权益资金", color: "#d97706" },
+        { key: "financing", label: "融入资金", color: "#c026d3" }
+      ] as const,
+    []
+  );
+
+  const applicationBarSeries = useMemo(
+    () =>
+      [
         { key: "reserve", label: "资金备付", color: "#0891b2" },
         { key: "credit", label: "信贷业务", color: "#2563eb" },
         { key: "interbank", label: "同业业务", color: "#0284c7" },
@@ -133,67 +142,58 @@ export function FundCockpitScreen() {
     []
   );
 
-  const riverLayout = useMemo(() => {
+  const fundChartLayout = useMemo(() => {
     const width = 880;
-    const height = 240;
-    const padX = 34;
-    const padY = 16;
-    const drawableWidth = width - padX * 2;
-    const drawableHeight = height - padY * 2;
-    const xStep = drawableWidth / (fundSeries.length - 1);
-    const monthTotals = fundSeries.map((item) => riverSeries.reduce((acc, series) => acc + item[series.key], 0));
-    const maxTotal = Math.max(...monthTotals);
-    const scaleY = drawableHeight / maxTotal;
-    const centerY = height / 2;
+    const height = 270;
+    const padLeft = 54;
+    const padRight = 26;
+    const padTop = 18;
+    const padBottom = 34;
+    const chartWidth = width - padLeft - padRight;
+    const chartHeight = height - padTop - padBottom;
+    const maxLineValue = Math.max(...fundSeries.flatMap((item) => sourceLineSeries.map((series) => item[series.key])));
+    const maxStackValue = Math.max(
+      ...fundSeries.map((item) => applicationBarSeries.reduce((sum, series) => sum + item[series.key], 0))
+    );
+    const maxValue = Math.ceil(Math.max(maxLineValue, maxStackValue) / 100) * 100;
+    const ticks = Array.from({ length: 5 }, (_, index) => (maxValue / 4) * index);
+    const xStep = chartWidth / (fundSeries.length - 1);
+    const barWidth = Math.min(46, xStep * 0.34);
+    const getX = (index: number) => padLeft + index * xStep;
+    const getY = (value: number) => padTop + chartHeight - (value / maxValue) * chartHeight;
 
-    const toSmoothPath = (points: Array<{ x: number; y: number }>) => {
-      if (points.length === 0) {
-        return "";
-      }
-      if (points.length === 1) {
-        return `M ${points[0].x} ${points[0].y}`;
-      }
-      let path = `M ${points[0].x} ${points[0].y}`;
-      for (let i = 1; i < points.length; i += 1) {
-        const prev = points[i - 1];
-        const current = points[i];
-        const cpX = (prev.x + current.x) / 2;
-        path += ` C ${cpX} ${prev.y}, ${cpX} ${current.y}, ${current.x} ${current.y}`;
-      }
-      return path;
-    };
-
-    const layers = riverSeries.map((series) => {
-      const topPoints: Array<{ x: number; y: number }> = [];
-      const bottomPoints: Array<{ x: number; y: number }> = [];
-      const centers: Array<{ x: number; y: number; value: number; month: string }> = [];
-
-      fundSeries.forEach((item, index) => {
-        const x = padX + index * xStep;
-        const totalHeight = monthTotals[index] * scaleY;
-        const baseline = centerY - totalHeight / 2;
-        const previousValue = riverSeries
-          .slice(0, riverSeries.findIndex((entry) => entry.key === series.key))
-          .reduce((sum, entry) => sum + item[entry.key], 0);
-        const currentTop = baseline + previousValue * scaleY;
-        const currentBottom = currentTop + item[series.key] * scaleY;
-        topPoints.push({ x, y: currentTop });
-        bottomPoints.push({ x, y: currentBottom });
-        centers.push({ x, y: (currentTop + currentBottom) / 2, value: item[series.key], month: item.month });
-      });
-
-      const topPath = toSmoothPath(topPoints);
-      const bottomPath = toSmoothPath([...bottomPoints].reverse());
+    const linePaths = sourceLineSeries.map((series) => {
+      const points = fundSeries.map((item, index) => ({
+        x: getX(index),
+        y: getY(item[series.key]),
+        date: item.date,
+        value: item[series.key]
+      }));
 
       return {
         ...series,
-        path: `${topPath} L ${bottomPoints[bottomPoints.length - 1].x} ${bottomPoints[bottomPoints.length - 1].y} ${bottomPath.slice(1)} Z`,
-        centers
+        points,
+        path: points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ")
       };
     });
 
-    return { width, height, padX, layers };
-  }, [riverSeries]);
+    const barGroups = fundSeries.map((item, index) => {
+      let stackBase = 0;
+      const x = getX(index);
+      const segments = applicationBarSeries.map((series) => {
+        const value = item[series.key];
+        const y = getY(stackBase + value);
+        const segmentHeight = getY(stackBase) - y;
+        stackBase += value;
+
+        return { ...series, date: item.date, value, x: x - barWidth / 2, y, width: barWidth, height: segmentHeight };
+      });
+
+      return { date: item.date, x, segments };
+    });
+
+    return { width, height, padLeft, padTop, chartHeight, maxValue, ticks, linePaths, barGroups };
+  }, [applicationBarSeries, sourceLineSeries]);
 
   return (
     <section className="grid grid-cols-12 gap-5 text-xs">
@@ -466,14 +466,15 @@ export function FundCockpitScreen() {
 
             <div className="rounded-xl border border-slate-200 p-3">
               <div className="mb-2 flex items-center justify-between text-[11px]">
-                <p className="font-medium text-slate-700">主题河流图（资金来源与应用趋势）</p>
+                <p className="font-medium text-slate-700">资金来源折线 / 资金应用堆叠柱状图</p>
+                <span className="text-slate-500">单位：亿元</span>
               </div>
               <div className="mb-2 flex flex-wrap gap-2">
-                {riverLayout.layers.map((series) => (
+                {[...fundChartLayout.linePaths, ...applicationBarSeries].map((series) => (
                   <button
                     key={series.label}
-                    onMouseEnter={() => setHighlightedRiver(series.label)}
-                    onMouseLeave={() => setHighlightedRiver(null)}
+                    onMouseEnter={() => setHighlightedFundItem(series.label)}
+                    onMouseLeave={() => setHighlightedFundItem(null)}
                     className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600"
                   >
                     <i className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: series.color }} />
@@ -481,67 +482,115 @@ export function FundCockpitScreen() {
                   </button>
                 ))}
               </div>
-              <div className="relative">
-                {hoveredRiverPoint ? (
+              <div className="relative rounded-lg bg-slate-50/60 px-1 pt-1">
+                {hoveredFundPoint ? (
                   <div
                     className="pointer-events-none absolute z-10 rounded-lg border border-slate-200 bg-white/95 px-2 py-1 text-[11px] text-slate-700 shadow"
                     style={{
-                      left: `${(hoveredRiverPoint.x / riverLayout.width) * 100}%`,
-                      top: `${(hoveredRiverPoint.y / riverLayout.height) * 100}%`,
+                      left: `${(hoveredFundPoint.x / fundChartLayout.width) * 100}%`,
+                      top: `${(hoveredFundPoint.y / fundChartLayout.height) * 100}%`,
                       transform: "translate(-50%, -120%)"
                     }}
                   >
-                    {hoveredRiverPoint.month} {hoveredRiverPoint.label} {hoveredRiverPoint.value}亿
+                    {hoveredFundPoint.date} {hoveredFundPoint.label} {hoveredFundPoint.value}亿元
                   </div>
                 ) : null}
-                <svg viewBox={`0 0 ${riverLayout.width} ${riverLayout.height}`} className="h-64 w-full">
-                {riverLayout.layers.map((series) => {
-                  const dimmed = highlightedRiver !== null && highlightedRiver !== series.label;
-                  return (
-                    <path
-                      key={series.label}
-                      d={series.path}
-                      fill={series.color}
-                      opacity={dimmed ? 0.25 : 0.88}
-                      className="transition-opacity duration-200"
-                      onMouseEnter={() => setHighlightedRiver(series.label)}
-                      onMouseLeave={() => {
-                        setHighlightedRiver(null);
-                        setHoveredRiverPoint(null);
-                      }}
-                    />
-                  );
-                })}
-                {riverLayout.layers.flatMap((series) =>
-                  series.centers.map((point) => (
-                    <circle
-                      key={`${series.key}-${point.month}`}
-                      cx={point.x}
-                      cy={point.y}
-                      r="9"
-                      fill="transparent"
-                      onMouseEnter={() => {
-                        setHighlightedRiver(series.label);
-                        setHoveredRiverPoint({
-                          month: point.month,
-                          label: series.label,
-                          value: point.value,
-                          x: point.x,
-                          y: point.y
-                        });
-                      }}
-                      onMouseLeave={() => setHoveredRiverPoint(null)}
-                    />
-                  ))
-                )}
-                {fundSeries.map((item, index) => {
-                  const x = riverLayout.padX + index * ((riverLayout.width - riverLayout.padX * 2) / (fundSeries.length - 1));
-                  return (
-                    <text key={item.month} x={x} y={riverLayout.height - 4} textAnchor="middle" className="fill-slate-500 text-[10px]">
-                      {item.month}
+                <svg viewBox={`0 0 ${fundChartLayout.width} ${fundChartLayout.height}`} className="h-72 w-full">
+                  {fundChartLayout.ticks.map((tick) => {
+                    const y = fundChartLayout.padTop + fundChartLayout.chartHeight - (tick / fundChartLayout.maxValue) * fundChartLayout.chartHeight;
+                    return (
+                      <g key={tick}>
+                        <line x1={fundChartLayout.padLeft} x2={fundChartLayout.width - 26} y1={y} y2={y} stroke="#e2e8f0" strokeDasharray="4 4" />
+                        <text x={fundChartLayout.padLeft - 10} y={y + 3} textAnchor="end" className="fill-slate-500 text-[10px]">
+                          {tick}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  <text x="14" y="16" className="fill-slate-500 text-[10px]">金额（亿元）</text>
+                  {fundChartLayout.barGroups.map((group) => (
+                    <g key={group.date}>
+                      {group.segments.map((segment) => {
+                        const dimmed = highlightedFundItem !== null && highlightedFundItem !== segment.label;
+                        return (
+                          <rect
+                            key={`${group.date}-${segment.label}`}
+                            x={segment.x}
+                            y={segment.y}
+                            width={segment.width}
+                            height={segment.height}
+                            rx="3"
+                            fill={segment.color}
+                            opacity={dimmed ? 0.25 : 0.82}
+                            className="transition-opacity duration-200"
+                            onMouseEnter={() => {
+                              setHighlightedFundItem(segment.label);
+                              setHoveredFundPoint({
+                                date: segment.date,
+                                label: segment.label,
+                                value: segment.value,
+                                x: segment.x + segment.width / 2,
+                                y: segment.y
+                              });
+                            }}
+                            onMouseLeave={() => {
+                              setHighlightedFundItem(null);
+                              setHoveredFundPoint(null);
+                            }}
+                          />
+                        );
+                      })}
+                    </g>
+                  ))}
+                  {fundChartLayout.linePaths.map((series) => {
+                    const dimmed = highlightedFundItem !== null && highlightedFundItem !== series.label;
+                    return (
+                      <g key={series.label}>
+                        <path
+                          d={series.path}
+                          fill="none"
+                          stroke={series.color}
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          opacity={dimmed ? 0.25 : 1}
+                          className="transition-opacity duration-200"
+                        />
+                        {series.points.map((point) => (
+                          <circle
+                            key={`${series.key}-${point.date}`}
+                            cx={point.x}
+                            cy={point.y}
+                            r="4.5"
+                            fill="#fff"
+                            stroke={series.color}
+                            strokeWidth="2.5"
+                            opacity={dimmed ? 0.35 : 1}
+                            onMouseEnter={() => {
+                              setHighlightedFundItem(series.label);
+                              setHoveredFundPoint({ date: point.date, label: series.label, value: point.value, x: point.x, y: point.y });
+                            }}
+                            onMouseLeave={() => {
+                              setHighlightedFundItem(null);
+                              setHoveredFundPoint(null);
+                            }}
+                          />
+                        ))}
+                      </g>
+                    );
+                  })}
+                  <line
+                    x1={fundChartLayout.padLeft}
+                    x2={fundChartLayout.width - 26}
+                    y1={fundChartLayout.padTop + fundChartLayout.chartHeight}
+                    y2={fundChartLayout.padTop + fundChartLayout.chartHeight}
+                    stroke="#94a3b8"
+                  />
+                  {fundChartLayout.barGroups.map((group) => (
+                    <text key={group.date} x={group.x} y={fundChartLayout.height - 10} textAnchor="middle" className="fill-slate-500 text-[10px]">
+                      {group.date}
                     </text>
-                  );
-                })}
+                  ))}
                 </svg>
               </div>
             </div>
