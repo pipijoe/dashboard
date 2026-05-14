@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import DashboardTopLeft from "@/screens/components/interbank/AssetOverview";
+import InterbankDistribution from "@/screens/components/interbank/InterbankDistribution";
 
 const transactionRows = [
   {
@@ -280,6 +282,7 @@ export function FundConfigurationScreen() {
     <section>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className="space-y-4">
+            <DashboardTopLeft />
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
               <CardTitle>交易信息</CardTitle>
@@ -448,7 +451,7 @@ export function FundConfigurationScreen() {
             </CardContent>
           </Card>
         </div>
-
+        <InterbankDistribution />
         <Card>
           <CardHeader>
             <CardTitle>测算工具</CardTitle>

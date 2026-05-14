@@ -53,18 +53,18 @@ export default function App() {
           </ScreenShell>
         }
       />
-      <Route
-        path="/screens/fund-configuration"
-        element={
-          <ScreenShell title="资金配置" currentPath="/screens/fund-configuration">
-            <FundConfigurationScreen />
-          </ScreenShell>
-        }
-      />
+      {/*<Route*/}
+      {/*  path="/screens/fund-configuration"*/}
+      {/*  element={*/}
+      {/*    <ScreenShell title="资金配置" currentPath="/screens/fund-configuration">*/}
+      {/*      <FundConfigurationScreen />*/}
+      {/*    </ScreenShell>*/}
+      {/*  }*/}
+      {/*/>*/}
       <Route
         path="/screens/treasury-deposit"
         element={
-          <ScreenShell title="财司存款分析大屏" currentPath="/screens/treasury-deposit">
+          <ScreenShell title="资金配置" currentPath="/screens/treasury-deposit">
             <TreasuryDepositAnalysisScreen />
           </ScreenShell>
         }

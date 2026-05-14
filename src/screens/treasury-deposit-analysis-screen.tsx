@@ -206,12 +206,11 @@ export function TreasuryDepositAnalysisScreen() {
   );
 
   return (
-    <section className="space-y-5 text-xs">
-      <div className="rounded-2xl border border-rose-100 bg-white/80 p-4 shadow-sm backdrop-blur">
+    <section className="space-y-4 text-xs">
+      <div className="rounded-2xl p-4 backdrop-blur">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold tracking-[0.28em] text-rose-500">TREASURY DEPOSIT ANALYSIS</p>
-            <h2 className="mt-2 text-3xl font-extrabold text-primary">财司存款分析大屏</h2>
+            <h2 className="mt-2 text-3xl font-extrabold text-primary">资金配置</h2>
           </div>
           <div className="rounded-full border border-rose-100 bg-rose-50 px-4 py-2 font-medium text-rose-700">
             数据日期：2026年5月14日 09:30
