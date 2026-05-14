@@ -117,13 +117,16 @@ const counterpartyTop10 = [
   { bank: "上海银行", amount: 18.3 },
 ];
 
-const maturityDistribution = [
-  { term: "T+0", 活期: 42.6, 定期: 0, 存单: 0 },
-  { term: "7天内", 活期: 22.4, 定期: 18.2, 存单: 8.6 },
-  { term: "8-30天", 活期: 18.8, 定期: 39.6, 存单: 34.0 },
-  { term: "31-90天", 活期: 14.7, 定期: 52.1, 存单: 41.5 },
-  { term: "91-180天", 活期: 13.5, 定期: 38.9, 存单: 25.7 },
-  { term: "181天+", 活期: 14.8, 定期: 37.7, 存单: 15.5 },
+const maturityDepositCategories = ["同业定期", "同业存单"] as const;
+type MaturityDepositCategory = (typeof maturityDepositCategories)[number];
+
+const maturityDistribution: Array<{ term: string } & Record<MaturityDepositCategory, number>> = [
+  { term: "小于30天", 同业定期: 57.8, 同业存单: 42.6 },
+  { term: "31-90天", 同业定期: 52.1, 同业存单: 41.5 },
+  { term: "91-180天", 同业定期: 38.9, 同业存单: 25.7 },
+  { term: "181-270天", 同业定期: 24.6, 同业存单: 12.8 },
+  { term: "271-366天", 同业定期: 13.1, 同业存单: 2.7 },
+  { term: "1Y以上", 同业定期: 6.5, 同业存单: 0 },
 ];
 
 const rateTrend = [
@@ -140,6 +143,11 @@ const categoryColors: Record<DepositCategory, string> = {
   活期: "#e11d48",
   定期: "#f97316",
   存单: "#2563eb",
+};
+
+const maturityCategoryColors: Record<MaturityDepositCategory, string> = {
+  同业定期: "#f97316",
+  同业存单: "#2563eb",
 };
 
 const kpiToneClass = {
@@ -337,10 +345,10 @@ export function TreasuryDepositAnalysisScreen() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3caca" />
                 <XAxis dataKey="term" tick={{ fill: "#7f1d1d", fontSize: 12 }} />
                 <YAxis tickFormatter={(value) => `${value}亿`} tick={{ fill: "#7f1d1d", fontSize: 12 }} />
-                <Tooltip formatter={(value, name) => [formatAmount(Number(value)), `${name}存款`]} />
+                <Tooltip formatter={(value, name) => [formatAmount(Number(value)), name]} />
                 <Legend />
-                {(["活期", "定期", "存单"] as DepositCategory[]).map((name) => (
-                  <Bar key={name} dataKey={name} stackId="deposit" fill={categoryColors[name]} radius={name === "存单" ? [8, 8, 0, 0] : [0, 0, 0, 0]} />
+                {maturityDepositCategories.map((name) => (
+                  <Bar key={name} dataKey={name} stackId="deposit" fill={maturityCategoryColors[name]} radius={name === "同业存单" ? [8, 8, 0, 0] : [0, 0, 0, 0]} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
