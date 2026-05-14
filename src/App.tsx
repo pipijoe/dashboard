@@ -7,6 +7,7 @@ import { BankRelationshipScreen } from "@/screens/bank-relationship-screen";
 import { FundCockpitScreen } from "@/screens/fund-cockpit-screen";
 import { FundConfigurationScreen } from "@/screens/fund-configuration-screen";
 import { InterbankQuoteScreen } from "@/screens/interbank-quote-screen";
+import { TreasuryDepositAnalysisScreen } from "@/screens/treasury-deposit-analysis-screen";
 
 export default function App() {
   return (
@@ -57,6 +58,22 @@ export default function App() {
         element={
           <ScreenShell title="资金配置" currentPath="/screens/fund-configuration">
             <FundConfigurationScreen />
+          </ScreenShell>
+        }
+      />
+      <Route
+        path="/screens/treasury-deposit"
+        element={
+          <ScreenShell title="财司存款分析大屏" currentPath="/screens/treasury-deposit">
+            <TreasuryDepositAnalysisScreen />
+          </ScreenShell>
+        }
+      />
+      <Route
+        path="/screens/treasury-deposit/:category"
+        element={
+          <ScreenShell title="财司存款专项分析" currentPath="/screens/treasury-deposit">
+            <TreasuryDepositAnalysisScreen />
           </ScreenShell>
         }
       />
