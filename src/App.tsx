@@ -49,7 +49,8 @@ export default function App() {
       <Route
         path="/screens/interbank-management"
         element={
-          <ScreenShell title="同业账户管理" currentPath="/screens/interbank-management">
+        
+          <ScreenShell title="同业管理大屏" currentPath="/screens/interbank-management">
             <InterbankManagementScreen />
           </ScreenShell>
         }
