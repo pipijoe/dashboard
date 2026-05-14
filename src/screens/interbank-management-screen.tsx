@@ -660,6 +660,7 @@ export function InterbankManagementScreen() {
                                     <TableHead>银行类型</TableHead>
                                     <TableHead>列入原因</TableHead>
                                     <TableHead>列入日期</TableHead>
+                                    <TableHead>管控动作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -669,6 +670,9 @@ export function InterbankManagementScreen() {
                                         <TableCell className="text-muted-foreground">{bank.bankType}</TableCell>
                                         <TableCell>{bank.reason}</TableCell>
                                         <TableCell>{bank.listedDate}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="destructive" className="shadow-sm shadow-rose-200">{bank.action}</Badge>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
