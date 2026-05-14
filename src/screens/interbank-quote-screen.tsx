@@ -198,6 +198,111 @@ const ftpTrend = [
   { date: "03-18", depositFtp: 2.12, loanFtp: 2.72 },
 ];
 
+const marketRateTrend = [
+  {
+    date: "02-18",
+    shiborOn: 1.42,
+    shibor7d: 1.53,
+    shibor1m: 1.62,
+    shibor3m: 1.69,
+    lpr1y: 3.1,
+    lpr5y: 3.6,
+  },
+  {
+    date: "02-21",
+    shiborOn: 1.38,
+    shibor7d: 1.49,
+    shibor1m: 1.6,
+    shibor3m: 1.67,
+    lpr1y: 3.1,
+    lpr5y: 3.6,
+  },
+  {
+    date: "02-26",
+    shiborOn: 1.45,
+    shibor7d: 1.56,
+    shibor1m: 1.61,
+    shibor3m: 1.66,
+    lpr1y: 3.1,
+    lpr5y: 3.6,
+  },
+  {
+    date: "03-03",
+    shiborOn: 1.5,
+    shibor7d: 1.6,
+    shibor1m: 1.59,
+    shibor3m: 1.63,
+    lpr1y: 3.1,
+    lpr5y: 3.6,
+  },
+  {
+    date: "03-06",
+    shiborOn: 1.47,
+    shibor7d: 1.55,
+    shibor1m: 1.58,
+    shibor3m: 1.61,
+    lpr1y: 3.1,
+    lpr5y: 3.6,
+  },
+  {
+    date: "03-11",
+    shiborOn: 1.39,
+    shibor7d: 1.48,
+    shibor1m: 1.56,
+    shibor3m: 1.59,
+    lpr1y: 3.1,
+    lpr5y: 3.6,
+  },
+  {
+    date: "03-14",
+    shiborOn: 1.36,
+    shibor7d: 1.46,
+    shibor1m: 1.55,
+    shibor3m: 1.57,
+    lpr1y: 3.1,
+    lpr5y: 3.6,
+  },
+  {
+    date: "03-17",
+    shiborOn: 1.41,
+    shibor7d: 1.5,
+    shibor1m: 1.54,
+    shibor3m: 1.56,
+    lpr1y: 3.1,
+    lpr5y: 3.6,
+  },
+  {
+    date: "03-18",
+    shiborOn: 1.43,
+    shibor7d: 1.52,
+    shibor1m: 1.52,
+    shibor3m: 1.54,
+    lpr1y: 3.1,
+    lpr5y: 3.6,
+  },
+] as const;
+
+const marketRateSeries = [
+  {
+    key: "shiborOn",
+    label: "隔夜SHIBOR",
+    color: "#0ea5e9",
+    strokeWidth: 2.5,
+  },
+  { key: "shibor7d", label: "7D SHIBOR", color: "#2563eb", strokeWidth: 2.5 },
+  { key: "shibor1m", label: "1M SHIBOR", color: "#7c3aed", strokeWidth: 2.5 },
+  { key: "shibor3m", label: "3M SHIBOR", color: "#db2777", strokeWidth: 2.5 },
+  { key: "lpr1y", label: "1年期LPR", color: "#f97316", strokeWidth: 3.5 },
+  {
+    key: "lpr5y",
+    label: "5年期以上LPR",
+    color: "#dc2626",
+    strokeWidth: 3.5,
+  },
+] as const;
+
+type MarketRateKey = (typeof marketRateSeries)[number]["key"];
+
 const marketAnalysis = [
   {
     title: "货币政策",
@@ -302,6 +407,45 @@ export function InterbankQuoteScreen() {
   };
   const depositCurvePath = getCurvePath("depositFtp");
   const loanCurvePath = getCurvePath("loanFtp");
+
+  const marketRateValues = marketRateTrend.flatMap((point) =>
+    marketRateSeries.map((series) => point[series.key]),
+  );
+  const marketRateMin =
+    Math.floor((Math.min(...marketRateValues) - 0.1) * 10) / 10;
+  const marketRateMax =
+    Math.ceil((Math.max(...marketRateValues) + 0.1) * 10) / 10;
+  const marketRateRange = marketRateMax - marketRateMin || 1;
+  const marketRateTicks = Array.from(
+    { length: 5 },
+    (_, index) => marketRateMax - (marketRateRange / 4) * index,
+  );
+  const latestMarketRate = marketRateTrend[marketRateTrend.length - 1];
+  const previousMarketRate = marketRateTrend[marketRateTrend.length - 2];
+  const oneYearSpread = latestMarketRate.lpr1y - latestMarketRate.shibor1m;
+  const fiveYearSpread = latestMarketRate.lpr5y - latestMarketRate.shibor3m;
+  const spreadChange =
+    oneYearSpread - (previousMarketRate.lpr1y - previousMarketRate.shibor1m);
+  const toMarketRateY = (value: number) =>
+    ((marketRateMax - value) / marketRateRange) * 100;
+  const getMarketRatePath = (key: MarketRateKey) => {
+    const points = marketRateTrend.map((point, index) => {
+      const x = (index / (marketRateTrend.length - 1)) * 100;
+      const y = toMarketRateY(point[key]);
+
+      return { x, y };
+    });
+
+    return points.reduce((path, point, index) => {
+      if (index === 0) {
+        return `M ${point.x} ${point.y}`;
+      }
+      const previous = points[index - 1];
+      const controlX = (previous.x + point.x) / 2;
+
+      return `${path} C ${controlX} ${previous.y}, ${controlX} ${point.y}, ${point.x} ${point.y}`;
+    }, "");
+  };
 
   return (
     <section className="space-y-4">
@@ -559,6 +703,197 @@ export function InterbankQuoteScreen() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="overflow-hidden border border-border">
+        <CardHeader className="border-b border-border bg-slate-900 text-white">
+          <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <CardTitle className="text-2xl">市场利率走势图</CardTitle>
+              <p className="mt-1 text-sm text-slate-300">
+                SHIBOR走势与LPR报价叠加对比，跟踪资金面与贷款定价基准利差变化
+              </p>
+            </div>
+            <div className="rounded-full bg-white/10 px-4 py-1 text-sm text-slate-200">
+              数据区间：02-18 至 03-18
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5 bg-slate-50 p-4 md:p-5">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
+              <p className="text-sm text-muted-foreground">1M SHIBOR</p>
+              <p className="mt-2 text-3xl font-bold text-blue-700">
+                {latestMarketRate.shibor1m.toFixed(2)}%
+              </p>
+              <p className="mt-1 text-xs text-green-600">较上期下行2bp</p>
+            </div>
+            <div className="rounded-xl border border-violet-100 bg-white p-4 shadow-sm">
+              <p className="text-sm text-muted-foreground">3M SHIBOR</p>
+              <p className="mt-2 text-3xl font-bold text-violet-700">
+                {latestMarketRate.shibor3m.toFixed(2)}%
+              </p>
+              <p className="mt-1 text-xs text-green-600">较月初下行9bp</p>
+            </div>
+            <div className="rounded-xl border border-orange-100 bg-white p-4 shadow-sm">
+              <p className="text-sm text-muted-foreground">1年期LPR-1M SHIBOR</p>
+              <p className="mt-2 text-3xl font-bold text-orange-600">
+                {(oneYearSpread * 100).toFixed(0)}bp
+              </p>
+              <p
+                className={
+                  spreadChange >= 0
+                    ? "mt-1 text-xs text-red-600"
+                    : "mt-1 text-xs text-green-600"
+                }
+              >
+                较上期{spreadChange >= 0 ? "扩大" : "收窄"}
+                {Math.abs(spreadChange * 100).toFixed(0)}bp
+              </p>
+            </div>
+            <div className="rounded-xl border border-red-100 bg-white p-4 shadow-sm">
+              <p className="text-sm text-muted-foreground">5年期LPR-3M SHIBOR</p>
+              <p className="mt-2 text-3xl font-bold text-red-600">
+                {(fiveYearSpread * 100).toFixed(0)}bp
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">中长期报价利差保持高位</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-12">
+            <div className="rounded-xl border border-border bg-white p-4 shadow-sm xl:col-span-8">
+              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">SHIBOR期限结构与LPR叠加走势</h3>
+                  <p className="text-sm text-muted-foreground">
+                    不同期限SHIBOR反映短端资金成本，LPR曲线用于观察贷款基准定价锚的相对稳定性。
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {marketRateSeries.map((series) => (
+                    <span
+                      key={series.key}
+                      className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1"
+                    >
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: series.color }}
+                      />
+                      {series.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="relative h-[360px] rounded-lg bg-gradient-to-b from-white to-slate-50 p-3">
+                <svg
+                  viewBox="0 0 760 320"
+                  className="h-full w-full overflow-visible"
+                  role="img"
+                  aria-label="SHIBOR与LPR利率走势图"
+                >
+                  {marketRateTicks.map((tick, index) => {
+                    const y = 30 + (index / (marketRateTicks.length - 1)) * 235;
+
+                    return (
+                      <g key={tick}>
+                        <line
+                          x1="58"
+                          x2="720"
+                          y1={y}
+                          y2={y}
+                          stroke="#e2e8f0"
+                          strokeDasharray="4 6"
+                        />
+                        <text
+                          x="48"
+                          y={y + 4}
+                          textAnchor="end"
+                          className="fill-slate-500 text-[11px]"
+                        >
+                          {tick.toFixed(2)}%
+                        </text>
+                      </g>
+                    );
+                  })}
+                  {marketRateTrend.map((point, index) => {
+                    const x = 58 + (index / (marketRateTrend.length - 1)) * 662;
+
+                    return (
+                      <g key={point.date}>
+                        <line x1={x} x2={x} y1="30" y2="265" stroke="#f1f5f9" />
+                        <text
+                          x={x}
+                          y="292"
+                          textAnchor="middle"
+                          className="fill-slate-500 text-[11px]"
+                        >
+                          {point.date}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  {marketRateSeries.map((series) => (
+                    <path
+                      key={series.key}
+                      d={getMarketRatePath(series.key)}
+                      fill="none"
+                      stroke={series.color}
+                      strokeWidth={series.strokeWidth}
+                      strokeLinecap="round"
+                      vectorEffect="non-scaling-stroke"
+                      transform="translate(58 30) scale(6.62 2.35)"
+                    />
+                  ))}
+                  {marketRateSeries.map((series) => {
+                    const value = latestMarketRate[series.key];
+                    return (
+                      <g key={`${series.key}-latest`}>
+                        <circle
+                          cx="720"
+                          cy={30 + toMarketRateY(value) * 2.35}
+                          r="4"
+                          fill="white"
+                          stroke={series.color}
+                          strokeWidth="2"
+                        />
+                        <text
+                          x="730"
+                          y={34 + toMarketRateY(value) * 2.35}
+                          className="fill-slate-600 text-[11px]"
+                        >
+                          {value.toFixed(2)}%
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+            </div>
+
+            <div className="space-y-3 xl:col-span-4">
+              <article className="rounded-xl border border-border bg-white p-4 shadow-sm">
+                <h3 className="mb-2 text-lg font-semibold">SHIBOR走势观察</h3>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  隔夜与7D品种围绕1.4%-1.6%区间震荡，1M、3M期限缓慢下行，显示跨月后资金预期趋稳，期限结构斜率收敛。
+                </p>
+              </article>
+              <article className="rounded-xl border border-border bg-white p-4 shadow-sm">
+                <h3 className="mb-2 text-lg font-semibold">LPR叠加对比分析</h3>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  LPR报价保持稳定，而中短端SHIBOR小幅回落，1年期LPR与1M SHIBOR利差扩大至
+                  {(oneYearSpread * 100).toFixed(0)}bp，可作为贷款重定价与内部FTP调整的监测信号。
+                </p>
+              </article>
+              <article className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <h3 className="mb-2 text-lg font-semibold text-amber-900">利差监测提示</h3>
+                <p className="text-sm leading-6 text-amber-800">
+                  若后续SHIBOR继续下行而LPR维持不变，贷款端基准利差将被动扩大；建议同步关注存单报价、公开市场操作与贷款投放节奏。
+                </p>
+              </article>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </section>
   );
 }
