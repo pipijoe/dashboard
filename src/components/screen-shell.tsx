@@ -8,7 +8,8 @@ const menuItems = [
   { label: "资金驾驶舱大屏", path: "/screens/fund-cockpit" },
   { label: "账户管理大屏", path: "/screens/account-management" },
   { label: "资金配置", path: "/screens/fund-configuration" },
-  { label: "市场行情", path: "/screens/interbank-quote" }
+  { label: "市场行情", path: "/screens/interbank-quote" },
+  { label: "财司存款分析", path: "/screens/treasury-deposit" }
 ];
 
 interface ScreenShellProps extends PropsWithChildren {
