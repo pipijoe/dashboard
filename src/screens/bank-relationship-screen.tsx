@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import {
   Bar,
   BarChart,
+  Line,
+  LineChart,
   CartesianGrid,
   Cell,
   Pie,
@@ -31,10 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type DepositStat = {
-  type: string;
-  averageBalance: number;
-  endingBalance: number;
+type DepositTrendItem = {
+  month: string;
+  totalDeposit: number;
 };
 
 type CreditBusiness = {
@@ -78,7 +79,7 @@ type BankProfile = {
   category: string;
   type: string;
   riskBank: boolean;
-  deposit: DepositStat[];
+  deposit: DepositTrendItem[];
   creditBusiness: CreditBusiness[];
   creditLine: CreditLine;
   rankings: {
@@ -117,11 +118,18 @@ const banks: BankProfile[] = [
     type: "国有商业银行",
     riskBank: false,
     deposit: [
-      { type: "活期", averageBalance: 22.4, endingBalance: 23.1 },
-      { type: "定期", averageBalance: 30.2, endingBalance: 31.4 },
-      { type: "通知存款", averageBalance: 7.5, endingBalance: 7.2 },
-      { type: "存单", averageBalance: 10.8, endingBalance: 11.1 },
-      { type: "结构性存款", averageBalance: 8.6, endingBalance: 9.3 },
+      { month: "2025-06", totalDeposit: 74.8 },
+      { month: "2025-07", totalDeposit: 76.2 },
+      { month: "2025-08", totalDeposit: 75.6 },
+      { month: "2025-09", totalDeposit: 78.1 },
+      { month: "2025-10", totalDeposit: 79.4 },
+      { month: "2025-11", totalDeposit: 80.2 },
+      { month: "2025-12", totalDeposit: 82.6 },
+      { month: "2026-01", totalDeposit: 81.3 },
+      { month: "2026-02", totalDeposit: 80.8 },
+      { month: "2026-03", totalDeposit: 82.7 },
+      { month: "2026-04", totalDeposit: 84.5 },
+      { month: "2026-05", totalDeposit: 86.1 },
     ],
     creditBusiness: [
       { product: "贷款", balance: 66.2, amount: 18.1, rate: 2.98, term: "1Y以内 42%" },
@@ -161,11 +169,18 @@ const banks: BankProfile[] = [
     type: "股份制商业银行",
     riskBank: false,
     deposit: [
-      { type: "活期", averageBalance: 16.3, endingBalance: 17.2 },
-      { type: "定期", averageBalance: 22.6, endingBalance: 23.3 },
-      { type: "通知存款", averageBalance: 4.2, endingBalance: 4.1 },
-      { type: "存单", averageBalance: 6.8, endingBalance: 7.6 },
-      { type: "结构性存款", averageBalance: 5.1, endingBalance: 4.9 },
+      { month: "2025-06", totalDeposit: 51.5 },
+      { month: "2025-07", totalDeposit: 52.3 },
+      { month: "2025-08", totalDeposit: 53.1 },
+      { month: "2025-09", totalDeposit: 54.8 },
+      { month: "2025-10", totalDeposit: 55.6 },
+      { month: "2025-11", totalDeposit: 56.2 },
+      { month: "2025-12", totalDeposit: 57.4 },
+      { month: "2026-01", totalDeposit: 56.8 },
+      { month: "2026-02", totalDeposit: 57.9 },
+      { month: "2026-03", totalDeposit: 58.6 },
+      { month: "2026-04", totalDeposit: 60.4 },
+      { month: "2026-05", totalDeposit: 61.7 },
     ],
     creditBusiness: [
       { product: "贷款", balance: 40.6, amount: 15.8, rate: 3.1, term: "1Y以内 36%" },
@@ -205,11 +220,18 @@ const banks: BankProfile[] = [
     type: "城商行",
     riskBank: true,
     deposit: [
-      { type: "活期", averageBalance: 6.4, endingBalance: 5.8 },
-      { type: "定期", averageBalance: 9.1, endingBalance: 8.4 },
-      { type: "通知存款", averageBalance: 1.9, endingBalance: 2.1 },
-      { type: "存单", averageBalance: 2.4, endingBalance: 2.3 },
-      { type: "结构性存款", averageBalance: 1.2, endingBalance: 1.1 },
+      { month: "2025-06", totalDeposit: 23.4 },
+      { month: "2025-07", totalDeposit: 22.9 },
+      { month: "2025-08", totalDeposit: 22.1 },
+      { month: "2025-09", totalDeposit: 21.7 },
+      { month: "2025-10", totalDeposit: 21.2 },
+      { month: "2025-11", totalDeposit: 20.8 },
+      { month: "2025-12", totalDeposit: 20.5 },
+      { month: "2026-01", totalDeposit: 19.8 },
+      { month: "2026-02", totalDeposit: 19.4 },
+      { month: "2026-03", totalDeposit: 18.9 },
+      { month: "2026-04", totalDeposit: 18.2 },
+      { month: "2026-05", totalDeposit: 17.9 },
     ],
     creditBusiness: [
       { product: "贷款", balance: 12.8, amount: 6.2, rate: 3.9, term: "1Y以内 58%" },
@@ -253,8 +275,7 @@ const scoreWeights = {
 };
 
 const depositChartConfig = {
-  averageBalance: { label: "日均余额", color: "var(--chart-1)" },
-  endingBalance: { label: "期末余额", color: "var(--chart-2)" },
+  totalDeposit: { label: "存款总额", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 const loanChartConfig = {
@@ -389,6 +410,16 @@ export function BankRelationshipScreen() {
   const creditUsageRate = (selectedBank.creditLine.usedLine / selectedBank.creditLine.totalLine) * 100;
   const quoteWinCount = selectedBank.quotes.filter((item) => item.bankRate <= item.marketBenchmark).length;
   const quoteWinRate = (quoteWinCount / selectedBank.quotes.length) * 100;
+  const selectedCurrentDeposit = selectedBank.deposit[selectedBank.deposit.length - 1]?.totalDeposit ?? 0;
+  const selectedFirstDeposit = selectedBank.deposit[0]?.totalDeposit ?? 0;
+  const groupCurrentDeposit = banks.reduce((total, bank) => {
+    const latestDeposit = bank.deposit[bank.deposit.length - 1]?.totalDeposit ?? 0;
+
+    return total + latestDeposit;
+  }, 0);
+  const depositShareRate = groupCurrentDeposit > 0 ? (selectedCurrentDeposit / groupCurrentDeposit) * 100 : 0;
+  const depositYearGrowthRate =
+    selectedFirstDeposit > 0 ? ((selectedCurrentDeposit - selectedFirstDeposit) / selectedFirstDeposit) * 100 : 0;
   const healthTone = getHealthTone(scoreTotal);
 
   return (
@@ -440,35 +471,50 @@ export function BankRelationshipScreen() {
         rankingData={selectedBank.rankings.deposit}
         summary={
           <>
-            <div className="h-[240px] rounded-lg border border-border p-2">
-              <ChartContainer config={depositChartConfig} className="h-full w-full">
-                <BarChart data={selectedBank.deposit}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis dataKey="type" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} width={36} />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent formatter={(value) => `${value} 亿元`} />}
-                  />
-                  <Bar dataKey="averageBalance" fill="var(--color-averageBalance)" radius={4} />
-                  <Bar dataKey="endingBalance" fill="var(--color-endingBalance)" radius={4} />
-                </BarChart>
-              </ChartContainer>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+              <div className="h-[240px] rounded-lg border border-border p-2">
+                <ChartContainer config={depositChartConfig} className="h-full w-full">
+                  <LineChart data={selectedBank.deposit} margin={{ left: 4, right: 12, top: 12 }}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} minTickGap={12} />
+                    <YAxis tickLine={false} axisLine={false} width={42} />
+                    <ChartTooltip content={<ChartTooltipContent formatter={(value) => `${value} 亿元`} />} />
+                    <Line
+                      type="monotone"
+                      dataKey="totalDeposit"
+                      stroke="var(--color-totalDeposit)"
+                      strokeWidth={2.5}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
+              </div>
+              <div className="flex flex-col justify-between rounded-lg border border-primary/20 bg-primary/5 p-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">当前集团在该行存款份额</p>
+                  <p className="mt-2 text-3xl font-semibold text-primary">{depositShareRate.toFixed(1)}%</p>
+                  <p className="mt-1 text-xs text-muted-foreground">该行存款 / 集团合作银行存款总额</p>
+                </div>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p>当前存款：{formatMoney(selectedCurrentDeposit)}</p>
+                  <p>集团合计：{formatMoney(groupCurrentDeposit)}</p>
+                  <p>近一年变化：{depositYearGrowthRate >= 0 ? "+" : ""}{depositYearGrowthRate.toFixed(1)}%</p>
+                </div>
+              </div>
             </div>
             <table className="w-full text-sm">
               <thead className="bg-muted/70 text-muted-foreground">
                 <tr>
-                  <th className="px-2 py-2 text-left">存款类型</th>
-                  <th className="px-2 py-2 text-right">日均存款余额</th>
-                  <th className="px-2 py-2 text-right">期末余额</th>
+                  <th className="px-2 py-2 text-left">月份</th>
+                  <th className="px-2 py-2 text-right">存款总额</th>
                 </tr>
               </thead>
               <tbody>
                 {selectedBank.deposit.map((item) => (
-                  <tr key={item.type} className="border-b border-border/70 transition-colors hover:bg-muted/40">
-                    <td className="px-2 py-2">{item.type}</td>
-                    <td className="px-2 py-2 text-right">{formatMoney(item.averageBalance)}</td>
-                    <td className="px-2 py-2 text-right">{formatMoney(item.endingBalance)}</td>
+                  <tr key={item.month} className="border-b border-border/70 transition-colors hover:bg-muted/40">
+                    <td className="px-2 py-2">{item.month}</td>
+                    <td className="px-2 py-2 text-right">{formatMoney(item.totalDeposit)}</td>
                   </tr>
                 ))}
               </tbody>
